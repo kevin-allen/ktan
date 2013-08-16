@@ -39,9 +39,8 @@ using namespace std;
 Rhd2000EvalBoard::Rhd2000EvalBoard()
 {
     int i;
-    sampleRate = SampleRate30000Hz; // Rhythm FPGA boots up with 30.0 kS/s/channel sampling rate
+    sampleRate = SampleRate20000Hz; // Rhythm FPGA boots up with 20.0 kS/s/channel sampling rate
     numDataStreams = 0;
-
     for (i = 0; i < MAX_NUM_DATA_STREAMS; ++i) {
         dataStreamEnabled[i] = 0;
     }
@@ -71,38 +70,37 @@ int Rhd2000EvalBoard::open()
     nDevices = dev->GetDeviceCount();
     cout << "Found " << nDevices << " Opal Kelly device" << ((nDevices == 1) ? "" : "s") <<
       " connected:" << endl;
-    // for (i = 0; i < nDevices; ++i) {
-    //     cout << "  Device #" << i + 1 << ": Opal Kelly " <<
-    //             opalKellyModelName(dev->GetDeviceListModel(i)).c_str() <<
-    //             " with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
-    //   }
-//    cout << endl;
+    for (i = 0; i < nDevices; ++i) {
+      cout << "  Device #" << i + 1 << ": Opal Kelly " <<
+	opalKellyModelName(dev->GetDeviceListModel(i)).c_str() <<
+	" with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
+    }
+    cout << endl;
 
-    // // Find first device in list of type XEM6010LX45.
-    // for (i = 0; i < nDevices; ++i) {
-    //     if (dev->GetDeviceListModel(i) == OK_PRODUCT_XEM6010LX45) {
-    //         serialNumber = dev->GetDeviceListSerial(i);
-    //         break;
-    //     }
-    // }
+    // Find first device in list of type XEM6010LX45.
+    for (i = 0; i < nDevices; ++i) {
+      if (dev->GetDeviceListModel(i) == OK_PRODUCT_XEM6010LX45) {
+	serialNumber = dev->GetDeviceListSerial(i);
+	break;
+      }
+    }
 
-    // // Attempt to open device.
-    // if (dev->OpenBySerial(serialNumber) != okCFrontPanel::NoError) {
-    //     delete dev;
-    //     cerr << "Device could not be opened.  Is one connected?" << endl;
-    //     return -2;
-    // }
+    // Attempt to open device.
+    if (dev->OpenBySerial(serialNumber) != okCFrontPanelx::NoError) {
+      delete dev;
+      cerr << "Device could not be opened.  Is one connected?" << endl;
+      return -2;
+    }
 
     // // Configure the on-board PLL appropriately.
-    // dev->LoadDefaultPLLConfiguration();
+    dev->LoadDefaultPLLConfiguration();
 
-    // // Get some general information about the XEM.
-    // cout << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
-    // cout << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
-    //         dev->GetDeviceMinorVersion() << endl;
-    // cout << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
-    // cout << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
-
+    // Get some general information about the XEM.
+    cout << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
+    cout << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
+      dev->GetDeviceMinorVersion() << endl;
+    cout << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
+    cout << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
     return 1;
 }
 

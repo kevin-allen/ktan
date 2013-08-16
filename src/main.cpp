@@ -144,6 +144,8 @@ void print_options()
   return;
 }
 
+
+
 void openInterfaceBoard()
 {
   Rhd2000EvalBoard *evalBoard;
@@ -151,8 +153,6 @@ void openInterfaceBoard()
   evalBoard = new Rhd2000EvalBoard;
   // Open Opal Kelly XEM6010 board.
   errorCode = evalBoard->open();
-  
-  /*
   if (errorCode < 1) 
     {
       if (errorCode == -1) 
@@ -168,20 +168,16 @@ void openInterfaceBoard()
       evalBoard = 0;
       return;
     }
-  //printf("errorCode: %d\n",errorCode);
+  
+  // Load Rhythm FPGA configuration bitfile (provided by Intan Technologies).
+  string bitfilename ="main.bit";
+  if (!evalBoard->uploadFpgaBitfile(bitfilename)) {
+    fprintf(stderr,"FPGA Configuration File Upload Error\n");
+    fprintf(stderr,"Cannot upload configuration file to FPGA.  Make sure file main.bit is in the same directory as the executable file.\n");
+    return;
+  }
   
   /*
-    // Load Rhythm FPGA configuration bitfile (provided by Intan Technologies).
-    string bitfilename =
-            QString(QCoreApplication::applicationDirPath() + "/main.bit").toStdString();
-
-    if (!evalBoard->uploadFpgaBitfile(bitfilename)) {
-        QMessageBox::critical(this, tr("FPGA Configuration File Upload Error"),
-                              tr("Cannot upload configuration file to FPGA.  Make sure file main.bit "
-                                 "is in the same directory as the executable file."));
-        exit(EXIT_FAILURE); // abort application
-    }
-
     // Initialize interface board.
     evalBoard->initialize();
 
