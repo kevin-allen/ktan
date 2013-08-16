@@ -30,7 +30,7 @@
 
 using namespace std;
 
-class okCFrontPanel;
+class okCFrontPanelx;
 class Rhd2000DataBlock;
 
 class Rhd2000EvalBoard
@@ -149,7 +149,7 @@ public:
     int queueToFile(queue<Rhd2000DataBlock> &dataQueue, std::ofstream &saveOut);
 
 private:
-    okCFrontPanel *dev;
+    okCFrontPanelx *dev;
     AmplifierSampleRate sampleRate;
     int numDataStreams; // total number of data streams currently enabled
     int dataStreamEnabled[MAX_NUM_DATA_STREAMS]; // 0 (disabled) or 1 (enabled)

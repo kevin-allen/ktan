@@ -55,52 +55,53 @@ int Rhd2000EvalBoard::open()
     string serialNumber = "";
     int i, nDevices;
 
-    cout << "---- Intan Technologies ---- Rhythm RHD2000 Controller v1.0 ----" << endl << endl;
-    if (okFrontPanelDLL_LoadLib(NULL) == false) {
+    cout << "---- Intan Technologies ---- Rhythm RHD2000 Controller v1.0 ----" << endl;
+    if (okFrontPanelDLL_LoadLib(NULL) == false) { // instead of null you can supply the full path
         cerr << "FrontPanel DLL could not be loaded.  " <<
                 "Make sure this DLL is in the application start directory." << endl;
         return -1;
     }
     okFrontPanelDLL_GetVersion(dll_date, dll_time);
-    cout << endl << "FrontPanel DLL loaded.  Built: " << dll_date << "  " << dll_time << endl;
+    cout << "FrontPanel DLL loaded.  Built: " << dll_date << "  " << dll_time << endl;
 
-    dev = new okCFrontPanel;
+    // Construct device and PLL objects.
+    dev = new okCFrontPanelx;
 
     cout << endl << "Scanning USB for Opal Kelly devices..." << endl << endl;
     nDevices = dev->GetDeviceCount();
     cout << "Found " << nDevices << " Opal Kelly device" << ((nDevices == 1) ? "" : "s") <<
-            " connected:" << endl;
-    for (i = 0; i < nDevices; ++i) {
-        cout << "  Device #" << i + 1 << ": Opal Kelly " <<
-                opalKellyModelName(dev->GetDeviceListModel(i)).c_str() <<
-                " with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
-    }
-    cout << endl;
+      " connected:" << endl;
+    // for (i = 0; i < nDevices; ++i) {
+    //     cout << "  Device #" << i + 1 << ": Opal Kelly " <<
+    //             opalKellyModelName(dev->GetDeviceListModel(i)).c_str() <<
+    //             " with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
+    //   }
+//    cout << endl;
 
-    // Find first device in list of type XEM6010LX45.
-    for (i = 0; i < nDevices; ++i) {
-        if (dev->GetDeviceListModel(i) == OK_PRODUCT_XEM6010LX45) {
-            serialNumber = dev->GetDeviceListSerial(i);
-            break;
-        }
-    }
+    // // Find first device in list of type XEM6010LX45.
+    // for (i = 0; i < nDevices; ++i) {
+    //     if (dev->GetDeviceListModel(i) == OK_PRODUCT_XEM6010LX45) {
+    //         serialNumber = dev->GetDeviceListSerial(i);
+    //         break;
+    //     }
+    // }
 
-    // Attempt to open device.
-    if (dev->OpenBySerial(serialNumber) != okCFrontPanel::NoError) {
-        delete dev;
-        cerr << "Device could not be opened.  Is one connected?" << endl;
-        return -2;
-    }
+    // // Attempt to open device.
+    // if (dev->OpenBySerial(serialNumber) != okCFrontPanel::NoError) {
+    //     delete dev;
+    //     cerr << "Device could not be opened.  Is one connected?" << endl;
+    //     return -2;
+    // }
 
-    // Configure the on-board PLL appropriately.
-    dev->LoadDefaultPLLConfiguration();
+    // // Configure the on-board PLL appropriately.
+    // dev->LoadDefaultPLLConfiguration();
 
-    // Get some general information about the XEM.
-    cout << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
-    cout << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
-            dev->GetDeviceMinorVersion() << endl;
-    cout << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
-    cout << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
+    // // Get some general information about the XEM.
+    // cout << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
+    // cout << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
+    //         dev->GetDeviceMinorVersion() << endl;
+    // cout << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
+    // cout << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
 
     return 1;
 }
@@ -108,30 +109,30 @@ int Rhd2000EvalBoard::open()
 // Uploads the configuration file (bitfile) to the FPGA.  Returns true if successful.
 bool Rhd2000EvalBoard::uploadFpgaBitfile(string filename)
 {
-    okCFrontPanel::ErrorCode errorCode = dev->ConfigureFPGA(filename);
+    okCFrontPanelx::ErrorCode errorCode = dev->ConfigureFPGA(filename);
 
     switch (errorCode) {
-        case okCFrontPanel::NoError:
+        case okCFrontPanelx::NoError:
             break;
-        case okCFrontPanel::DeviceNotOpen:
+        case okCFrontPanelx::DeviceNotOpen:
             cerr << "FPGA configuration failed: Device not open." << endl;
             return(false);
-        case okCFrontPanel::FileError:
+        case okCFrontPanelx::FileError:
             cerr << "FPGA configuration failed: Cannot find configuration file." << endl;
             return(false);
-        case okCFrontPanel::InvalidBitstream:
+        case okCFrontPanelx::InvalidBitstream:
             cerr << "FPGA configuration failed: Bitstream is not properly formatted." << endl;
             return(false);
-        case okCFrontPanel::DoneNotHigh:
+        case okCFrontPanelx::DoneNotHigh:
             cerr << "FPGA configuration failed: FPGA DONE signal did not assert after configuration." << endl;
             return(false);
-        case okCFrontPanel::TransferError:
+        case okCFrontPanelx::TransferError:
             cerr << "FPGA configuration failed: USB error occurred during download." << endl;
             return(false);
-        case okCFrontPanel::CommunicationError:
+        case okCFrontPanelx::CommunicationError:
             cerr << "FPGA configuration failed: Communication error with firmware." << endl;
             return(false);
-        case okCFrontPanel::UnsupportedFeature:
+        case okCFrontPanelx::UnsupportedFeature:
             cerr << "FPGA configuration failed: Unsupported feature." << endl;
             return(false);
         default:
@@ -167,7 +168,7 @@ bool Rhd2000EvalBoard::uploadFpgaBitfile(string filename)
 double Rhd2000EvalBoard::getSystemClockFreq() const
 {
     // Read back the CY22393 PLL configuation
-    okCPLL22393 pll;
+    okCPLL22393x pll;
     dev->GetEepromPLL22393Configuration(pll);
 
     return pll.GetOutputFrequency(0);
