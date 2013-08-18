@@ -148,6 +148,8 @@ void print_options()
 
 void openInterfaceBoard()
 {
+  // function called from the gui to set up the board
+  // so that it is ready to record.
   Rhd2000EvalBoard *evalBoard;
   int errorCode=0;
   evalBoard = new Rhd2000EvalBoard;

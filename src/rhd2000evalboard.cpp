@@ -176,9 +176,8 @@ double Rhd2000EvalBoard::getSystemClockFreq() const
 void Rhd2000EvalBoard::initialize()
 {
     int i;
-
     resetBoard();
-    setSampleRate(SampleRate30000Hz);
+    setSampleRate(SampleRate20000Hz); // why is this hard coded
     selectAuxCommandBank(PortA, AuxCmd1, 0);
     selectAuxCommandBank(PortB, AuxCmd1, 0);
     selectAuxCommandBank(PortC, AuxCmd1, 0);
@@ -1162,10 +1161,8 @@ bool Rhd2000EvalBoard::readDataBlocks(int numBlocks, queue<Rhd2000DataBlock> &da
 
     dataBlock = new Rhd2000DataBlock(numDataStreams);
     for (i = 0; i < numBlocks; ++i) {
-        // dataBlock = new Rhd2000DataBlock(numDataStreams);
         dataBlock->fillFromUsbBuffer(usbBuffer, i, numDataStreams);
         dataQueue.push(*dataBlock);
-        // delete dataBlock;
     }
     delete dataBlock;
 
