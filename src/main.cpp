@@ -20,6 +20,7 @@ Date: 01.08.2010
 *************************************/
 #include "main.h" // all functions are declared there
 #include "rhd2000evalboard.h"
+#include <gtkmm.h>
 
 // functions to print information to terminal
 void print_options();
@@ -37,7 +38,7 @@ int main (int argc, char *argv[])
   // flag for each option
   int with_h_opt=0; // help
   int with_v_opt=0; // version
-    
+  int with_t_opt=0; // terminal
   // get the options using the gnu getop_long function
   while (1)
     {
@@ -45,10 +46,11 @@ int main (int argc, char *argv[])
 	{
 	  {"help", no_argument,0,'h'},
 	  {"version", no_argument,0,'v'},
+	  {"terminal", no_argument,0,'t'},
 	  {0, 0, 0, 0}
 	};
       int option_index = 0;
-      opt = getopt_long (argc, argv, "hv",
+      opt = getopt_long (argc, argv, "hvt",
 			 long_options, &option_index);
       /* Detect the end of the options. */
       if (opt == -1)
@@ -73,6 +75,11 @@ int main (int argc, char *argv[])
 	case 'v':
 	  {
 	    with_v_opt=1;
+	    break;
+	  }
+	case 't':
+	  {
+	    with_t_opt=1;
 	    break;
 	  }
 	case '?':
@@ -111,11 +118,17 @@ int main (int argc, char *argv[])
       print_help();
       return 0;
     }
-
-  openInterfaceBoard();
+  if(with_t_opt)
+    {
+      fprintf(stderr,"%s will run in the terminal\n",PACKAGE_NAME);
+      openInterfaceBoard();
+    }
   
+  Gtk::Main kit(argc, argv);
+  Gtk::Window window;
+  Gtk::Main::run(window);
   return 0;
-}
+ }
 
 
 void print_version()

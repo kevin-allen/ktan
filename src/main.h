@@ -1,7 +1,7 @@
 /****************************************************************
-Copyright (C) 2010 Kevin Allen
+Copyright (C) 2013 Kevin Allen
 
-This file is part of kacq.
+This file is part of kacqtan.
 
 kacq is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,17 +24,12 @@ File with declarations of the main structures and functions used in kacq
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h> // for the nanosleep
-#include <gtk/gtk.h> // for the widgets
-#include <gdk/gdk.h>
 #include <pthread.h> // to be able to create threads
-#include <glib/gprintf.h>
 #include <math.h>
 #include <pwd.h> // to get the home directory as default directory
 #include <stdlib.h>
 #include <getopt.h>
+#include <gtkmm.h>
 #include <cairo.h>
 #include "../config.h"
 #include <iostream> 
-
-
-
