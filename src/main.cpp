@@ -19,9 +19,9 @@ along with kacqtan.  If not, see <http://www.gnu.org/licenses/>.
 Date: 01.08.2010
 *************************************/
 #include "main.h" // all functions are declared there
+#include "mainWindow.h"
 #include "rhd2000evalboard.h"
-#include <gtkmm.h>
-
+#include <gtkmm/application.h>
 // functions to print information to terminal
 void print_options();
 void print_version();
@@ -124,9 +124,45 @@ int main (int argc, char *argv[])
       openInterfaceBoard();
     }
   
-  Gtk::Main kit(argc, argv);
-  Gtk::Window window;
-  Gtk::Main::run(window);
+
+  // to get a window derived from the builder's window see
+  //https://developer.gnome.org/gtkmm-tutorial/3.2/sec-builder-using-derived-widgets.html.en
+
+
+  Glib::RefPtr<Gtk::Application> app =
+    Gtk::Application::create(argc, argv,"org.gtkmm.examples.base");
+
+  //Load the GtkBuilder file and instantiate its widgets:
+  Glib::RefPtr<Gtk::Builder> refBuilder = Gtk::Builder::create();
+  try
+    {
+      refBuilder->add_from_file("kacqtan.glade");
+    }
+  catch(const Glib::FileError& ex)
+    {
+      std::cerr << "FileError: " << ex.what() << std::endl;
+      return 1;
+    }
+  catch(const Glib::MarkupError& ex)
+    {
+      std::cerr << "MarkupError: " << ex.what() << std::endl;
+      return 1;
+    }
+  catch(const Gtk::BuilderError& ex)
+    {
+      std::cerr << "BuilderError: " << ex.what() << std::endl;
+      return 1;
+    }
+  
+  mainWindow window;
+  return app->run(window);
+
+  //Gtk::Main kit(argc, argv); // should be call in all gtkmm applications
+
+  // we should build our main window here.
+  
+  // Gtk::Window window;
+  //Gtk::Main::run(window);
   return 0;
  }
 
