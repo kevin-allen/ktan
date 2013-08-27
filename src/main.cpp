@@ -127,11 +127,11 @@ int main (int argc, char *argv[])
 
   // to get a window derived from the builder's window see
   //https://developer.gnome.org/gtkmm-tutorial/3.2/sec-builder-using-derived-widgets.html.en
-
-
+  //http://milindapro.blogspot.de/2012/10/create-gui-with-gtkmm-glade-with-gtkmm.html
+  
   Glib::RefPtr<Gtk::Application> app =
     Gtk::Application::create(argc, argv,"org.gtkmm.examples.base");
-
+  
   //Load the GtkBuilder file and instantiate its widgets:
   Glib::RefPtr<Gtk::Builder> refBuilder = Gtk::Builder::create();
   try
@@ -154,17 +154,10 @@ int main (int argc, char *argv[])
       return 1;
     }
   
-  mainWindow window;
-  return app->run(window);
-
-  //Gtk::Main kit(argc, argv); // should be call in all gtkmm applications
-
-  // we should build our main window here.
-  
-  // Gtk::Window window;
-  //Gtk::Main::run(window);
-  return 0;
- }
+  mainWindow* window =0;
+  refBuilder->get_widget_derived("window",window);
+  return app->run(*window);
+}
 
 
 void print_version()

@@ -8,12 +8,11 @@
 class mainWindow: public Gtk::Window
 {
  public:
-  mainWindow();
+  mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);//constructor
   virtual ~mainWindow();
 
  protected:
-  
-
+  Glib::RefPtr<Gtk::Builder> builder;
 };
 
 #endif // MAINWINDOW_H
