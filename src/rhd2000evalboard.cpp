@@ -27,7 +27,6 @@
 
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
-
 #include "okFrontPanelDLL.h"
 
 using namespace std;

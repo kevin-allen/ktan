@@ -10,3 +10,12 @@ the Free Software Foundation, either version 3 of the License, or
 If you are using kacqtan for research purposes and get to publish the data, please be kind enough to refer to kacqtan. 
 
 To install: ./autogen.sh;./configure; make; su -; make install
+
+If you are using a primitive version of the software, make sure that you have install the USB drivers for the Opal Kelly. They can be download from the intan web site.
+
+cp 60-opalkelly.rules /etc/udev/rules.d/
+
+
+In the directory with the compiled program, you will need 2 files
+main.bit
+libokFrontPanel.so

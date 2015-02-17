@@ -153,10 +153,10 @@ int main (int argc, char *argv[])
       std::cerr << "BuilderError: " << ex.what() << std::endl;
       return 1;
     }
-  
-  mainWindow* window =0;
+  mainWindow* window =0; // define in mainWindow.h and .cpp
   refBuilder->get_widget_derived("window",window);
-  return 0; //app->run(*window);
+  //  app->run(*window);
+  return 0;
 }
 
 void print_version()

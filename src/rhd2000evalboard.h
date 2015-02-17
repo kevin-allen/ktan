@@ -62,7 +62,6 @@ public:
         SampleRate25000Hz,
         SampleRate30000Hz
     };
-
     bool setSampleRate(AmplifierSampleRate newSampleRate);
     double getSampleRate() const;
     AmplifierSampleRate getSampleRateEnum() const;
@@ -72,7 +71,6 @@ public:
         AuxCmd2,
         AuxCmd3
     };
-
     enum BoardPort {
         PortA,
         PortB,
@@ -134,7 +132,6 @@ public:
     };
 
     void setDacManual(DacManual dac, int value);
-
     void setLedDisplay(int ledArray[]);
 
     void enableDac(int dacChannel, bool enabled);
