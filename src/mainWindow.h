@@ -37,11 +37,14 @@ class mainWindow: public Gtk::Window
   
 
   // digital to analog converters
-  int dacNumber;
+  int numDacs;
   bool* dacEnabled;
   int* chipId;
 
   int evalBoardMode;
+  
+  // for leds
+  int ttlOut[16];
 
   // variable changed with sampling rate
   int sampleRate;
@@ -54,14 +57,20 @@ class mainWindow: public Gtk::Window
   double cableLengthPortC;  // in meters
   double cableLengthPortD;  // in meters
 
+  int numPorts;
+  bool* portEnabled;
 
-
+  bool running;
+  
   void openInterfaceBoard();
   void scanPorts();
   void findConnectedAmplifiers();
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
- 
+  void runInterfaceBoard();
+  void stopInterfaceBoard();
+
+
  public:
   mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);//constructor
   virtual ~mainWindow();
