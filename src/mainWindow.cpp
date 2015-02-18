@@ -15,6 +15,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   desiredDspCutoffFreq = 1.0;
   dspEnabled = true;
   
+
+
   // Default electrode impedance measurement frequency
   desiredImpedanceFreq = 1000.0;
   actualImpedanceFreq = 0.0;
@@ -278,318 +280,367 @@ void mainWindow::findConnectedAmplifiers()
   changeSampleRate(Rhd2000EvalBoard::SampleRate30000Hz);
 
 
-  /*
+  // Enable all data streams, and set sources to cover one or two chips
+  // on Ports A-D.
+  evalBoard->setDataSource(0, initStreamPorts[0]);
+  evalBoard->setDataSource(1, initStreamPorts[1]);
+  evalBoard->setDataSource(2, initStreamPorts[2]);
+  evalBoard->setDataSource(3, initStreamPorts[3]);
+  evalBoard->setDataSource(4, initStreamPorts[4]);
+  evalBoard->setDataSource(5, initStreamPorts[5]);
+  evalBoard->setDataSource(6, initStreamPorts[6]);
+  evalBoard->setDataSource(7, initStreamPorts[7]);
+  
+  
+  portIndexOld[0] = 0;
+  portIndexOld[1] = 0;
+  portIndexOld[2] = 1;
+  portIndexOld[3] = 1;
+  portIndexOld[4] = 2;
+  portIndexOld[5] = 2;
+  portIndexOld[6] = 3;
+  portIndexOld[7] = 3;
+  
+  evalBoard->enableDataStream(0, true);
+  evalBoard->enableDataStream(1, true);
+  evalBoard->enableDataStream(2, true);
+  evalBoard->enableDataStream(3, true);
+  evalBoard->enableDataStream(4, true);
+  evalBoard->enableDataStream(5, true);
+  evalBoard->enableDataStream(6, true);
+  evalBoard->enableDataStream(7, true);
+  
+  
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA,
+				  Rhd2000EvalBoard::AuxCmd3, 0);
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB,
+				  Rhd2000EvalBoard::AuxCmd3, 0);
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC,
+				  Rhd2000EvalBoard::AuxCmd3, 0);
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD,
+				  Rhd2000EvalBoard::AuxCmd3, 0);
+  
+  // Since our longest command sequence is 60 commands, we run the SPI
+  // interface for 60 samples.
+  evalBoard->setMaxTimeStep(60);
+  evalBoard->setContinuousRunMode(false);
 
-        // Enable all data streams, and set sources to cover one or two chips
-        // on Ports A-D.
-        evalBoard->setDataSource(0, initStreamPorts[0]);
-        evalBoard->setDataSource(1, initStreamPorts[1]);
-        evalBoard->setDataSource(2, initStreamPorts[2]);
-        evalBoard->setDataSource(3, initStreamPorts[3]);
-        evalBoard->setDataSource(4, initStreamPorts[4]);
-        evalBoard->setDataSource(5, initStreamPorts[5]);
-        evalBoard->setDataSource(6, initStreamPorts[6]);
-        evalBoard->setDataSource(7, initStreamPorts[7]);
+  
+  Rhd2000DataBlock *dataBlock =
+    new Rhd2000DataBlock(evalBoard->getNumEnabledDataStreams());
+  
+  int* sumGoodDelays;
+  int* indexFirstGoodDelay;
+  int* indexSecondGoodDelay;
+  
+  sumGoodDelays = new int[MAX_NUM_DATA_STREAMS];
+  indexFirstGoodDelay = new int[MAX_NUM_DATA_STREAMS];
+  indexSecondGoodDelay = new int[MAX_NUM_DATA_STREAMS];
 
-        portIndexOld[0] = 0;
-        portIndexOld[1] = 0;
-        portIndexOld[2] = 1;
-        portIndexOld[3] = 1;
-        portIndexOld[4] = 2;
-        portIndexOld[5] = 2;
-        portIndexOld[6] = 3;
-        portIndexOld[7] = 3;
-
-        evalBoard->enableDataStream(0, true);
-        evalBoard->enableDataStream(1, true);
-        evalBoard->enableDataStream(2, true);
-        evalBoard->enableDataStream(3, true);
-        evalBoard->enableDataStream(4, true);
-        evalBoard->enableDataStream(5, true);
-        evalBoard->enableDataStream(6, true);
-        evalBoard->enableDataStream(7, true);
-
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA,
-                                        Rhd2000EvalBoard::AuxCmd3, 0);
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB,
-                                        Rhd2000EvalBoard::AuxCmd3, 0);
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC,
-                                        Rhd2000EvalBoard::AuxCmd3, 0);
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD,
-                                        Rhd2000EvalBoard::AuxCmd3, 0);
-
-        // Since our longest command sequence is 60 commands, we run the SPI
-        // interface for 60 samples.
-        evalBoard->setMaxTimeStep(60);
-        evalBoard->setContinuousRunMode(false);
-
-        Rhd2000DataBlock *dataBlock =
-                new Rhd2000DataBlock(evalBoard->getNumEnabledDataStreams());
-        QVector<int> sumGoodDelays(MAX_NUM_DATA_STREAMS, 0);
-        QVector<int> indexFirstGoodDelay(MAX_NUM_DATA_STREAMS, -1);
-        QVector<int> indexSecondGoodDelay(MAX_NUM_DATA_STREAMS, -1);
-
-        // Run SPI command sequence at all 16 possible FPGA MISO delay settings
-        // to find optimum delay for each SPI interface cable.
-        for (delay = 0; delay < 16; ++delay) {
-            evalBoard->setCableDelay(Rhd2000EvalBoard::PortA, delay);
-            evalBoard->setCableDelay(Rhd2000EvalBoard::PortB, delay);
-            evalBoard->setCableDelay(Rhd2000EvalBoard::PortC, delay);
-            evalBoard->setCableDelay(Rhd2000EvalBoard::PortD, delay);
-
-            // Start SPI interface.
-            evalBoard->run();
-
-            // Wait for the 60-sample run to complete.
-            while (evalBoard->isRunning()) {
-                qApp->processEvents();
-            }
-
-            // Read the resulting single data block from the USB interface.
-            evalBoard->readDataBlock(dataBlock);
-
-            // Read the Intan chip ID number from each RHD2000 chip found.
-            // Record delay settings that yield good communication with the chip.
-            for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-                id = deviceId(dataBlock, stream, register59Value);
-
-                if (id == CHIP_ID_RHD2132 || id == CHIP_ID_RHD2216 ||
-                        (id == CHIP_ID_RHD2164 && register59Value == REGISTER_59_MISO_A)) {
-                    // cout << "Delay: " << delay << " on stream " << stream << " is good." << endl;
-                    sumGoodDelays[stream] = sumGoodDelays[stream] + 1;
-                    if (indexFirstGoodDelay[stream] == -1) {
-                        indexFirstGoodDelay[stream] = delay;
-                        chipIdOld[stream] = id;
-                    } else if (indexSecondGoodDelay[stream] == -1) {
-                        indexSecondGoodDelay[stream] = delay;
-                        chipIdOld[stream] = id;
-                    }
-                }
-            }
-        }
-
-        // Set cable delay settings that yield good communication with each
-        // RHD2000 chip.
-        QVector<int> optimumDelay(MAX_NUM_DATA_STREAMS, 0);
-        for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-            if (sumGoodDelays[stream] == 1 || sumGoodDelays[stream] == 2) {
-                optimumDelay[stream] = indexFirstGoodDelay[stream];
-            } else if (sumGoodDelays[stream] > 2) {
-                optimumDelay[stream] = indexSecondGoodDelay[stream];
-            }
-        }
-
-        evalBoard->setCableDelay(Rhd2000EvalBoard::PortA,
-                                 qMax(optimumDelay[0], optimumDelay[1]));
-        evalBoard->setCableDelay(Rhd2000EvalBoard::PortB,
-                                 qMax(optimumDelay[2], optimumDelay[3]));
-        evalBoard->setCableDelay(Rhd2000EvalBoard::PortC,
-                                 qMax(optimumDelay[4], optimumDelay[5]));
-        evalBoard->setCableDelay(Rhd2000EvalBoard::PortD,
-                                 qMax(optimumDelay[6], optimumDelay[7]));
-
-//        cout << "Port A cable delay: " << qMax(optimumDelay[0], optimumDelay[1]) << endl;
-//        cout << "Port B cable delay: " << qMax(optimumDelay[2], optimumDelay[3]) << endl;
-//        cout << "Port C cable delay: " << qMax(optimumDelay[4], optimumDelay[5]) << endl;
-//        cout << "Port D cable delay: " << qMax(optimumDelay[6], optimumDelay[7]) << endl;
-
-
-        cableLengthPortA =
-                evalBoard->estimateCableLengthMeters(qMax(optimumDelay[0], optimumDelay[1]));
-        cableLengthPortB =
-                evalBoard->estimateCableLengthMeters(qMax(optimumDelay[2], optimumDelay[3]));
-        cableLengthPortC =
-                evalBoard->estimateCableLengthMeters(qMax(optimumDelay[4], optimumDelay[5]));
-        cableLengthPortD =
-                evalBoard->estimateCableLengthMeters(qMax(optimumDelay[6], optimumDelay[7]));
-
-        delete dataBlock;
-
-    } else {
-        // If we are running with synthetic data (i.e., no interface board), just assume
-        // that one RHD2132 is plugged into Port A.
-        chipIdOld[0] = CHIP_ID_RHD2132;
-        portIndexOld[0] = 0;
+  for(int i = 0; i < MAX_NUM_DATA_STREAMS; i++)
+    {
+      sumGoodDelays[i]=0;
+      indexFirstGoodDelay[i]=-1;
+      indexSecondGoodDelay[i]=-1;
     }
 
-    // Now that we know which RHD2000 amplifier chips are plugged into each SPI port,
-    // add up the total number of amplifier channels on each port and calcualate the number
-    // of data streams necessary to convey this data over the USB interface.
-    int numStreamsRequired = 0;
-    bool rhd2216ChipPresent = false;
-    for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-        if (chipIdOld[stream] == CHIP_ID_RHD2216) {
-            numStreamsRequired++;
-            if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) {
-                numChannelsOnPort[portIndexOld[stream]] += 16;
-            }
-            rhd2216ChipPresent = true;
-        }
-        if (chipIdOld[stream] == CHIP_ID_RHD2132) {
-            numStreamsRequired++;
-            if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) {
-                numChannelsOnPort[portIndexOld[stream]] += 32;
-            }
-        }
-        if (chipIdOld[stream] == CHIP_ID_RHD2164) {
-            numStreamsRequired += 2;
-            if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) {
-                numChannelsOnPort[portIndexOld[stream]] += 64;
-            }
-        }
+  
+  // Run SPI command sequence at all 16 possible FPGA MISO delay settings
+  // to find optimum delay for each SPI interface cable.
+  for (delay = 0; delay < 16; ++delay) 
+    {
+      evalBoard->setCableDelay(Rhd2000EvalBoard::PortA, delay);
+      evalBoard->setCableDelay(Rhd2000EvalBoard::PortB, delay);
+      evalBoard->setCableDelay(Rhd2000EvalBoard::PortC, delay);
+      evalBoard->setCableDelay(Rhd2000EvalBoard::PortD, delay);
+      
+      // Start SPI interface.
+      evalBoard->run();
+      
+      // Wait for the 60-sample run to complete.
+      while (evalBoard->isRunning()) {
+	//qApp->processEvents();
+      }
+      
+      // Read the resulting single data block from the USB interface.
+      evalBoard->readDataBlock(dataBlock);
+      
+      // Read the Intan chip ID number from each RHD2000 chip found.
+      // Record delay settings that yield good communication with the chip.
+      for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) 
+	{
+	  id = deviceId(dataBlock, stream, register59Value);
+	  if (id == CHIP_ID_RHD2132 || id == CHIP_ID_RHD2216 || (id == CHIP_ID_RHD2164 && register59Value == REGISTER_59_MISO_A)) 
+	    {
+	      cout << "Delay: " << delay << " on stream " << stream << " is good." << endl;
+	      
+	      sumGoodDelays[stream] = sumGoodDelays[stream] + 1;
+	      if (indexFirstGoodDelay[stream] == -1) 
+		{
+		  indexFirstGoodDelay[stream] = delay;
+		  chipIdOld[stream] = id;
+		} 
+	      else if (indexSecondGoodDelay[stream] == -1) {
+		indexSecondGoodDelay[stream] = delay;
+		chipIdOld[stream] = id;
+	      }
+	    }
+	}
+      
     }
+  // Set cable delay settings that yield good communication with each
+  // RHD2000 chip.
+  int* optimumDelay;
+  optimumDelay = new int [MAX_NUM_DATA_STREAMS];
+  for(int i = 0; i < MAX_NUM_DATA_STREAMS; i++)
+    optimumDelay[i]=0;
+
+  for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) 
+    {
+      if (sumGoodDelays[stream] == 1 || sumGoodDelays[stream] == 2) 
+	{
+	  optimumDelay[stream] = indexFirstGoodDelay[stream];
+	} 
+      else if (sumGoodDelays[stream] > 2) 
+	{
+	  optimumDelay[stream] = indexSecondGoodDelay[stream];
+	}
+    }
+
+  if(optimumDelay[0]>optimumDelay[1])
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortA,optimumDelay[0]);
+  else
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortA,optimumDelay[1]);
+  if(optimumDelay[2]>optimumDelay[3])
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortB,optimumDelay[2]);
+  else
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortB,optimumDelay[3]);
+  if(optimumDelay[4]>optimumDelay[5])
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortC,optimumDelay[4]);
+  else
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortC,optimumDelay[5]);
+  if(optimumDelay[6]>optimumDelay[7])
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortD,optimumDelay[6]);
+  else
+    evalBoard->setCableDelay(Rhd2000EvalBoard::PortD,optimumDelay[7]);
+
+  if(optimumDelay[0]>optimumDelay[1])
+    cableLengthPortA = evalBoard->estimateCableLengthMeters(optimumDelay[0]);
+  else
+    cableLengthPortA = evalBoard->estimateCableLengthMeters(optimumDelay[1]);
+							    
+  if(optimumDelay[2]>optimumDelay[3])
+    cableLengthPortB = evalBoard->estimateCableLengthMeters(optimumDelay[2]);
+  else
+    cableLengthPortB = evalBoard->estimateCableLengthMeters(optimumDelay[3]);
+
+  if(optimumDelay[4]>optimumDelay[5])
+    cableLengthPortC = evalBoard->estimateCableLengthMeters(optimumDelay[4]);
+  else
+    cableLengthPortC = evalBoard->estimateCableLengthMeters(optimumDelay[5]);
+
+  if(optimumDelay[6]>optimumDelay[7])
+    cableLengthPortD = evalBoard->estimateCableLengthMeters(optimumDelay[6]);
+  else
+    cableLengthPortD = evalBoard->estimateCableLengthMeters(optimumDelay[7]);
+
+  // dataBlock no longer needed
+  delete dataBlock;
+
+  
+  // Now that we know which RHD2000 amplifier chips are plugged into each SPI port,
+  // add up the total number of amplifier channels on each port and calcualate the number
+  // of data streams necessary to convey this data over the USB interface.
+  int numStreamsRequired = 0;
+  bool rhd2216ChipPresent = false;
+  for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
+    if (chipIdOld[stream] == CHIP_ID_RHD2216) {
+      numStreamsRequired++;
+      if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) {
+	numChannelsOnPort[portIndexOld[stream]] += 16;
+      }
+      rhd2216ChipPresent = true;
+    }
+    if (chipIdOld[stream] == CHIP_ID_RHD2132) {
+      numStreamsRequired++;
+      if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) {
+	numChannelsOnPort[portIndexOld[stream]] += 32;
+      }
+    }
+    if (chipIdOld[stream] == CHIP_ID_RHD2164) {
+      numStreamsRequired += 2;
+      if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) {
+	numChannelsOnPort[portIndexOld[stream]] += 64;
+      }
+    }
+    cerr << "stream : " << stream << '\n';
+    cerr << "number of channels on port: " << numChannelsOnPort[portIndexOld[stream]] << '\n';
+  }
+  
 
     // If the user plugs in more chips than the USB interface can support, throw
     // up a warning that not all channels will be displayed.
-    if (numStreamsRequired > 8) {
-        if (rhd2216ChipPresent) {
-            QMessageBox::warning(this, tr("Capacity of USB Interface Exceeded"),
-                    tr("This RHD2000 USB interface board can support 256 only amplifier channels."
-                       "<p>More than 256 total amplifier channels are currently connected.  (Each RHD2216 "
-                       "chip counts as 32 channels for USB interface purposes.)"
-                       "<p>Amplifier chips exceeding this limit will not appear in the GUI."));
-        } else {
-            QMessageBox::warning(this, tr("Capacity of USB Interface Exceeded"),
-                    tr("This RHD2000 USB interface board can support 256 only amplifier channels."
-                       "<p>More than 256 total amplifier channels are currently connected."
-                       "<p>Amplifier chips exceeding this limit will not appear in the GUI."));
-        }
-    }
+  if (numStreamsRequired > 8) 
+    cerr << "Capacity of USB Interface Exceeded\n"
+	 << "This RHD2000 USB interface board can support only 256  amplifier channels.\n";
+      
 
-    // Reconfigure USB data streams in consecutive order to accommodate all connected chips.
-    stream = 0;
-    for (int oldStream = 0; oldStream < MAX_NUM_DATA_STREAMS; ++oldStream) {
-        if ((chipIdOld[oldStream] == CHIP_ID_RHD2216) && (stream < MAX_NUM_DATA_STREAMS)) {
-            chipId[stream] = CHIP_ID_RHD2216;
-            portIndex[stream] = portIndexOld[oldStream];
-            if (!synthMode) {
-                evalBoard->enableDataStream(stream, true);
-                evalBoard->setDataSource(stream, initStreamPorts[oldStream]);
-            }
-            stream++;
-        } else if ((chipIdOld[oldStream] == CHIP_ID_RHD2132) && (stream < MAX_NUM_DATA_STREAMS)) {
-            chipId[stream] = CHIP_ID_RHD2132;
-            portIndex[stream] = portIndexOld[oldStream];
-            if (!synthMode) {
-                evalBoard->enableDataStream(stream, true);
-                evalBoard->setDataSource(stream, initStreamPorts[oldStream]);
-            }
-            stream++ ;
-        } else if ((chipIdOld[oldStream] == CHIP_ID_RHD2164) && (stream < MAX_NUM_DATA_STREAMS - 1)) {
-            chipId[stream] = CHIP_ID_RHD2164;
-            chipId[stream + 1] =  CHIP_ID_RHD2164_B;
-            portIndex[stream] = portIndexOld[oldStream];
-            portIndex[stream + 1] = portIndexOld[oldStream];
-            if (!synthMode) {
-                evalBoard->enableDataStream(stream, true);
-                evalBoard->enableDataStream(stream + 1, true);
-                evalBoard->setDataSource(stream, initStreamPorts[oldStream]);
-                evalBoard->setDataSource(stream + 1, initStreamDdrPorts[oldStream]);
-            }
-            stream += 2;
-        }
+  
+  // Reconfigure USB data streams in consecutive order to accommodate all connected chips.
+  stream = 0;
+  for (int oldStream = 0; oldStream < MAX_NUM_DATA_STREAMS; ++oldStream) 
+    {
+      if ((chipIdOld[oldStream] == CHIP_ID_RHD2216) && (stream < MAX_NUM_DATA_STREAMS)) 
+	{
+	  chipId[stream] = CHIP_ID_RHD2216;
+	  portIndex[stream] = portIndexOld[oldStream];
+	  evalBoard->enableDataStream(stream, true);
+	  evalBoard->setDataSource(stream, initStreamPorts[oldStream]);
+	  stream++;
+	} 
+      else if ((chipIdOld[oldStream] == CHIP_ID_RHD2132) && (stream < MAX_NUM_DATA_STREAMS)) 
+	{
+	  chipId[stream] = CHIP_ID_RHD2132;
+	  portIndex[stream] = portIndexOld[oldStream];
+	  evalBoard->enableDataStream(stream, true);
+	  evalBoard->setDataSource(stream, initStreamPorts[oldStream]);
+	  stream++ ;
+	} 
+      else if ((chipIdOld[oldStream] == CHIP_ID_RHD2164) && (stream < MAX_NUM_DATA_STREAMS - 1)) 
+	{
+	  chipId[stream] = CHIP_ID_RHD2164;
+	  chipId[stream + 1] =  CHIP_ID_RHD2164_B;
+	  portIndex[stream] = portIndexOld[oldStream];
+	  portIndex[stream + 1] = portIndexOld[oldStream];
+	  evalBoard->enableDataStream(stream, true);
+	  evalBoard->enableDataStream(stream + 1, true);
+	  evalBoard->setDataSource(stream, initStreamPorts[oldStream]);
+	  evalBoard->setDataSource(stream + 1, initStreamDdrPorts[oldStream]);
+	  stream += 2;
+	}
     }
 
     // Disable unused data streams.
-    for (; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-        if (!synthMode) {
-            evalBoard->enableDataStream(stream, false);
-        }
-    }
+    for (; stream < MAX_NUM_DATA_STREAMS; ++stream)
+      evalBoard->enableDataStream(stream, false);
+    
 
+    
+
+    /*
     // Add channel descriptions to the SignalSources object to create a list of all waveforms.
-    for (port = 0; port < 4; ++port) {
-        if (numChannelsOnPort[port] == 0) {
+    for (port = 0; port < 4; ++port) 
+      {
+	if (numChannelsOnPort[port] == 0) 
+	  {
             signalSources->signalPort[port].channel.clear();
             signalSources->signalPort[port].enabled = false;
-        } else if (signalSources->signalPort[port].numAmplifierChannels() !=
-                   numChannelsOnPort[port]) {  // if number of channels on port has changed...
+	  } 
+	else if (signalSources->signalPort[port].numAmplifierChannels() != numChannelsOnPort[port]) 
+	  {  // if number of channels on port has changed...
             signalSources->signalPort[port].channel.clear();  // ...clear existing channels...
             // ...and create new ones.
             channel = 0;
             // Create amplifier channels for each chip.
-            for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-                if (portIndex[stream] == port) {
-                    if (chipId[stream] == CHIP_ID_RHD2216) {
-                        for (i = 0; i < 16; ++i) {
+            for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) 
+	      {
+                if (portIndex[stream] == port) 
+		  {
+                    if (chipId[stream] == CHIP_ID_RHD2216) 
+		      {
+                        for (i = 0; i < 16; ++i) 
+			  {
+			    signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
+			  }
+		      } 
+		    else if (chipId[stream] == CHIP_ID_RHD2132) 
+		      {
+                        for (i = 0; i < 32; ++i) 
+			  {
                             signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
-                        }
-                    } else if (chipId[stream] == CHIP_ID_RHD2132) {
-                        for (i = 0; i < 32; ++i) {
-                            signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
-                        }
-                    } else if (chipId[stream] == CHIP_ID_RHD2164) {
-                        for (i = 0; i < 32; ++i) {  // 32 channels on MISO A; another 32 on MISO B
-                            signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
-                        }
-                    } else if (chipId[stream] == CHIP_ID_RHD2164_B) {
-                        for (i = 0; i < 32; ++i) {  // 32 channels on MISO A; another 32 on MISO B
-                            signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
+			  }
+		      } 
+		    else if (chipId[stream] == CHIP_ID_RHD2164) 
+		      {
+                        for (i = 0; i < 32; ++i) 
+			  {  // 32 channels on MISO A; another 32 on MISO B
+			    signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
+			  }
+		      } 
+		    else if (chipId[stream] == CHIP_ID_RHD2164_B) {
+		      for (i = 0; i < 32; ++i) 
+			{  // 32 channels on MISO A; another 32 on MISO B
+			  signalSources->signalPort[port].addAmplifierChannel(channel++, i, stream);
                         }
                     }
-                }
-            }
+		  }
+	      }
             // Now create auxiliary input channels and supply voltage channels for each chip.
             auxName = 1;
             vddName = 1;
-            for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-                if (portIndex[stream] == port) {
+            for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) 
+	      {
+		if (portIndex[stream] == port) 
+		  {
                     if (chipId[stream] == CHIP_ID_RHD2216 ||
-                            chipId[stream] == CHIP_ID_RHD2132 ||
-                            chipId[stream] == CHIP_ID_RHD2164) {
-                        signalSources->signalPort[port].addAuxInputChannel(channel++, 0, auxName++, stream);
+			chipId[stream] == CHIP_ID_RHD2132 ||
+			chipId[stream] == CHIP_ID_RHD2164) 
+		      {
+			signalSources->signalPort[port].addAuxInputChannel(channel++, 0, auxName++, stream);
                         signalSources->signalPort[port].addAuxInputChannel(channel++, 1, auxName++, stream);
                         signalSources->signalPort[port].addAuxInputChannel(channel++, 2, auxName++, stream);
                         signalSources->signalPort[port].addSupplyVoltageChannel(channel++, 0, vddName++, stream);
-                    }
-                }
-            }
-        } else {    // If number of channels on port has not changed, don't create new channels (since this
-                    // would clear all user-defined channel names.  But we must update the data stream indices
-                    // on the port.
+		      }
+		  }
+	      }
+	  } 
+	else 
+	  {    // If number of channels on port has not changed, don't create new channels (since this
+	    // would clear all user-defined channel names.  But we must update the data stream indices
+	    // on the port.
             channel = 0;
             // Update stream indices for amplifier channels.
             for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-                if (portIndex[stream] == port) {
-                    if (chipId[stream] == CHIP_ID_RHD2216) {
-                        for (i = channel; i < channel + 16; ++i) {
-                            signalSources->signalPort[port].channel[i].boardStream = stream;
-                        }
-                        channel += 16;
-                    } else if (chipId[stream] == CHIP_ID_RHD2132) {
-                        for (i = channel; i < channel + 32; ++i) {
-                            signalSources->signalPort[port].channel[i].boardStream = stream;
-                        }
-                        channel += 32;
-                    } else if (chipId[stream] == CHIP_ID_RHD2164) {
-                        for (i = channel; i < channel + 32; ++i) {  // 32 channels on MISO A; another 32 on MISO B
-                            signalSources->signalPort[port].channel[i].boardStream = stream;
-                        }
-                        channel += 32;
-                    } else if (chipId[stream] == CHIP_ID_RHD2164_B) {
-                        for (i = channel; i < channel + 32; ++i) {  // 32 channels on MISO A; another 32 on MISO B
-                            signalSources->signalPort[port].channel[i].boardStream = stream;
-                        }
-                        channel += 32;
-                    }
-                }
+	      if (portIndex[stream] == port) {
+		if (chipId[stream] == CHIP_ID_RHD2216) {
+		  for (i = channel; i < channel + 16; ++i) {
+		    signalSources->signalPort[port].channel[i].boardStream = stream;
+		  }
+		  channel += 16;
+		} else if (chipId[stream] == CHIP_ID_RHD2132) {
+		  for (i = channel; i < channel + 32; ++i) {
+		    signalSources->signalPort[port].channel[i].boardStream = stream;
+		  }
+		  channel += 32;
+		} else if (chipId[stream] == CHIP_ID_RHD2164) {
+		  for (i = channel; i < channel + 32; ++i) {  // 32 channels on MISO A; another 32 on MISO B
+		    signalSources->signalPort[port].channel[i].boardStream = stream;
+		  }
+		  channel += 32;
+		} else if (chipId[stream] == CHIP_ID_RHD2164_B) {
+		  for (i = channel; i < channel + 32; ++i) {  // 32 channels on MISO A; another 32 on MISO B
+		    signalSources->signalPort[port].channel[i].boardStream = stream;
+		  }
+		  channel += 32;
+		}
+	      }
             }
             // Update stream indices for auxiliary channels and supply voltage channels.
             for (stream = 0; stream < MAX_NUM_DATA_STREAMS; ++stream) {
-                if (portIndex[stream] == port) {
-                    if (chipId[stream] == CHIP_ID_RHD2216 ||
-                            chipId[stream] == CHIP_ID_RHD2132 ||
-                            chipId[stream] == CHIP_ID_RHD2164) {
-                        signalSources->signalPort[port].channel[channel++].boardStream = stream;
-                        signalSources->signalPort[port].channel[channel++].boardStream = stream;
-                        signalSources->signalPort[port].channel[channel++].boardStream = stream;
-                        signalSources->signalPort[port].channel[channel++].boardStream = stream;
-                    }
-                }
+	      if (portIndex[stream] == port) {
+		if (chipId[stream] == CHIP_ID_RHD2216 ||
+		    chipId[stream] == CHIP_ID_RHD2132 ||
+		    chipId[stream] == CHIP_ID_RHD2164) {
+		  signalSources->signalPort[port].channel[channel++].boardStream = stream;
+		  signalSources->signalPort[port].channel[channel++].boardStream = stream;
+		  signalSources->signalPort[port].channel[channel++].boardStream = stream;
+		  signalSources->signalPort[port].channel[channel++].boardStream = stream;
+		}
+	      }
             }
-        }
-    }
-
+	  }
+      }
+    
     // Update Port A-D radio buttons in GUI
 
     if (signalSources->signalPort[0].numAmplifierChannels() == 0) {
@@ -652,18 +703,16 @@ void mainWindow::findConnectedAmplifiers()
         displayAdcButton->setChecked(true);
     }
 
-    // Return sample rate to original user-selected value.
-    changeSampleRate(sampleRateComboBox->currentIndex());
-
-//    signalSources->signalPort[0].print();
-//    signalSources->signalPort[1].print();
-//    signalSources->signalPort[2].print();
-//    signalSources->signalPort[3].print();
 */
   changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz);
+
   delete[] portIndex;
   delete[] portIndexOld;
   delete[] chipIdOld;
+  delete[] sumGoodDelays;
+  delete[] indexFirstGoodDelay;
+  delete[] indexSecondGoodDelay;
+
   
   cerr << "leaving mainWindow::findConnectedAmplifiers()\n";
 }
@@ -832,66 +881,81 @@ void mainWindow::changeSampleRate(int sampleRateIndex)
   
   // Before generating register configuration command sequences, set amplifier
   // bandwidth paramters.
+  actualDspCutoffFreq = chipRegisters.setDspCutoffFreq(desiredDspCutoffFreq);
+  actualLowerBandwidth = chipRegisters.setLowerBandwidth(desiredLowerBandwidth);
+  actualUpperBandwidth = chipRegisters.setUpperBandwidth(desiredUpperBandwidth);
+  chipRegisters.enableDsp(dspEnabled);
 
-
-  /*
-    actualDspCutoffFreq = chipRegisters.setDspCutoffFreq(desiredDspCutoffFreq);
-    actualLowerBandwidth = chipRegisters.setLowerBandwidth(desiredLowerBandwidth);
-    actualUpperBandwidth = chipRegisters.setUpperBandwidth(desiredUpperBandwidth);
-    chipRegisters.enableDsp(dspEnabled);
-
-    if (dspEnabled) {
-        dspCutoffFreqLabel->setText("Desired/Actual DSP Cutoff: " +
-                                    QString::number(desiredDspCutoffFreq, 'f', 2) + " Hz / " +
-                                    QString::number(actualDspCutoffFreq, 'f', 2) + " Hz");
-    } else {
-        dspCutoffFreqLabel->setText("Desired/Actual DSP Cutoff: DSP disabled");
-    }
-
-    if (!synthMode) {
-        chipRegisters.createCommandListRegisterConfig(commandList, true);
-        // Upload version with ADC calibration to AuxCmd3 RAM Bank 0.
-        evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 0);
-        evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0,
-                                          commandSequenceLength - 1);
-
-        commandSequenceLength = chipRegisters.createCommandListRegisterConfig(commandList, false);
-        // Upload version with no ADC calibration to AuxCmd3 RAM Bank 1.
-        evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 1);
-        evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0,
-                                          commandSequenceLength - 1);
-
-        chipRegisters.setFastSettle(true);
-        commandSequenceLength = chipRegisters.createCommandListRegisterConfig(commandList, false);
-        // Upload version with fast settle enabled to AuxCmd3 RAM Bank 2.
-        evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 2);
-        evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0,
-                                          commandSequenceLength - 1);
-        chipRegisters.setFastSettle(false);
-
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
-                                        fastSettleEnabled ? 2 : 1);
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
-                                        fastSettleEnabled ? 2 : 1);
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
-                                        fastSettleEnabled ? 2 : 1);
-        evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
-                                        fastSettleEnabled ? 2 : 1);
-    }
 
   
-    signalProcessor->setNotchFilter(notchFilterFrequency, notchFilterBandwidth, boardSampleRate);
-    signalProcessor->setHighpassFilter(highpassFilterFrequency, boardSampleRate);
+  
+  chipRegisters.createCommandListRegisterConfig(commandList, true);
+  // Upload version with ADC calibration to AuxCmd3 RAM Bank 0.
+  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 0);
+  evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0, commandSequenceLength - 1);
 
-    evalBoard->setDacHighpassFilter(highpassFilterFrequency);
+  commandSequenceLength = chipRegisters.createCommandListRegisterConfig(commandList, false);
+  // Upload version with no ADC calibration to AuxCmd3 RAM Bank 1.
+  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 1);
+  evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0, commandSequenceLength - 1);
+
+  chipRegisters.setFastSettle(true);
+  commandSequenceLength = chipRegisters.createCommandListRegisterConfig(commandList, false);
+  // Upload version with fast settle enabled to AuxCmd3 RAM Bank 2.
+  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 2);
+  evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0,
+				    commandSequenceLength - 1);
+  chipRegisters.setFastSettle(false);
+  
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
+				  fastSettleEnabled ? 2 : 1);
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
+				  fastSettleEnabled ? 2 : 1);
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
+				  fastSettleEnabled ? 2 : 1);
+  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
+				  fastSettleEnabled ? 2 : 1);
   
   
 
-    impedanceFreqValid = false;
-    updateImpedanceFrequency();
+  // there was possibility to set up highpassFilter here
+  // signalProcessor->setNotchFilter(notchFilterFrequency, notchFilterBandwidth, boardSampleRate);
+  // signalProcessor->setHighpassFilter(highpassFilterFrequency, boardSampleRate);
+  // evalBoard->setDacHighpassFilter(highpassFilterFrequency);
   
-    */
-
-
+  // some impedance stuff
+  //impedanceFreqValid = false;
+  //updateImpedanceFrequency();
+    
   cerr << "Leaving MainWindow::changeSampleRate(int sampleRateIndex)\n";
+}
+
+
+int mainWindow::deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value)
+{
+    bool intanChipPresent;
+    // First, check ROM registers 32-36 to verify that they hold 'INTAN', and
+    // the initial chip name ROM registers 24-26 that hold 'RHD'.
+    // This is just used to verify that we are getting good data over the SPI
+    // communication channel.
+    intanChipPresent = ((char) dataBlock->auxiliaryData[stream][2][32] == 'I' &&
+                        (char) dataBlock->auxiliaryData[stream][2][33] == 'N' &&
+                        (char) dataBlock->auxiliaryData[stream][2][34] == 'T' &&
+                        (char) dataBlock->auxiliaryData[stream][2][35] == 'A' &&
+                        (char) dataBlock->auxiliaryData[stream][2][36] == 'N' &&
+                        (char) dataBlock->auxiliaryData[stream][2][24] == 'R' &&
+                        (char) dataBlock->auxiliaryData[stream][2][25] == 'H' &&
+                        (char) dataBlock->auxiliaryData[stream][2][26] == 'D');
+
+    // If the SPI communication is bad, return -1.  Otherwise, return the Intan
+    // chip ID number stored in ROM regstier 63.
+
+    if (!intanChipPresent) {
+      register59Value = -1;
+      return -1;
+    } else {
+
+      register59Value = dataBlock->auxiliaryData[stream][2][23]; // Register 59
+      return dataBlock->auxiliaryData[stream][2][19]; // chip ID (Register 63)
+    }
 }
