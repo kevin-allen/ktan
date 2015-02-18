@@ -3,9 +3,9 @@
 //
 // Intan Technoloies RHD2000 Rhythm Interface API
 // Rhd2000Registers Class Header File
-// Version 1.0 (14 January 2013)
+// Version 1.4 (26 February 2014)
 //
-// Copyright (c) 2013 Intan Technologies LLC
+// Copyright (c) 2013-2014 Intan Technologies LLC
 //
 // This software is provided 'as-is', without any express or implied warranty.
 // In no event will the authors be held liable for any damages arising from the
@@ -75,6 +75,7 @@ public:
 
     int createCommandListRegisterConfig(vector<int> &commandList, bool calibrate);
     int createCommandListTempSensor(vector<int> &commandList);
+    int createCommandListUpdateDigOut(vector<int> &commandList);
     int createCommandListZcheckDac(vector<int> &commandList, double frequency, double amplitude);
 
     enum Rhd2000CommandType {

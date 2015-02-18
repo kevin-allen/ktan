@@ -21,6 +21,7 @@ Date: 01.08.2010
 #include "main.h" // all functions are declared there
 #include "mainWindow.h"
 #include "rhd2000evalboard.h"
+#include "rhd2000datablock.h"
 #include <gtkmm/application.h>
 // functions to print information to terminal
 void print_options();
@@ -153,7 +154,7 @@ int main (int argc, char *argv[])
       std::cerr << "BuilderError: " << ex.what() << std::endl;
       return 1;
     }
-  mainWindow* window =0; // define in mainWindow.h and .cpp
+  mainWindow* window =0; // defined in mainWindow.h and .cpp
   refBuilder->get_widget_derived("window",window);
   //  app->run(*window);
   return 0;

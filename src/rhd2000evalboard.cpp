@@ -49,58 +49,62 @@ Rhd2000EvalBoard::Rhd2000EvalBoard()
 // Returns 1 if successful, -1 if FrontPanel cannot be loaded, and -2 if XEM6010 can't be found.
 int Rhd2000EvalBoard::open()
 {
-    char dll_date[32], dll_time[32];
-    string serialNumber = "";
-    int i, nDevices;
-
-    cout << "---- Intan Technologies ---- Rhythm RHD2000 Controller v1.0 ----" << endl;
-    if (okFrontPanelDLL_LoadLib(NULL) == false) { // instead of null you can supply the full path
-        cerr << "FrontPanel DLL could not be loaded.  " <<
-                "Make sure this DLL is in the application start directory." << endl;
-        return -1;
+  cerr << "entering Rhd2000EvalBoard::open()\n";
+  char dll_date[32], dll_time[32];
+  string serialNumber = "";
+  int i, nDevices;
+  
+  cout << "---- RHD2000EvalBoard::open() ----" << endl;
+  if (okFrontPanelDLL_LoadLib(NULL) == false) { // instead of null you can supply the full path
+    cerr << "FrontPanel DLL could not be loaded.  " <<
+      "Make sure this DLL is in the application start directory." << endl;
+    return -1;
+  }
+  okFrontPanelDLL_GetVersion(dll_date, dll_time);
+  cout << "FrontPanel DLL loaded.  Built: " << dll_date << "  " << dll_time << endl;
+  
+  // Construct device and PLL objects.
+  dev = new okCFrontPanelx;
+  
+  cout << endl << "Scanning USB for Opal Kelly devices..." << endl << endl;
+  nDevices = dev->GetDeviceCount();
+  cout << "Found " << nDevices << " Opal Kelly device" << ((nDevices == 1) ? "" : "s") <<
+    " connected:" << endl;
+  for (i = 0; i < nDevices; ++i) {
+    cout << "Device #" << i + 1 << ": Opal Kelly " <<
+      opalKellyModelName(dev->GetDeviceListModel(i)).c_str() <<
+      " with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
+  }
+  cout << endl;
+  
+  // Find first device in list of type XEM6010LX45.
+  for (i = 0; i < nDevices; ++i) {
+    if (dev->GetDeviceListModel(i) == OK_PRODUCT_XEM6010LX45) {
+      serialNumber = dev->GetDeviceListSerial(i);
+      break;
     }
-    okFrontPanelDLL_GetVersion(dll_date, dll_time);
-    cout << "FrontPanel DLL loaded.  Built: " << dll_date << "  " << dll_time << endl;
-
-    // Construct device and PLL objects.
-    dev = new okCFrontPanelx;
-
-    cout << endl << "Scanning USB for Opal Kelly devices..." << endl << endl;
-    nDevices = dev->GetDeviceCount();
-    cout << "Found " << nDevices << " Opal Kelly device" << ((nDevices == 1) ? "" : "s") <<
-      " connected:" << endl;
-    for (i = 0; i < nDevices; ++i) {
-      cout << "  Device #" << i + 1 << ": Opal Kelly " <<
-	opalKellyModelName(dev->GetDeviceListModel(i)).c_str() <<
-	" with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
-    }
-    cout << endl;
-
-    // Find first device in list of type XEM6010LX45.
-    for (i = 0; i < nDevices; ++i) {
-      if (dev->GetDeviceListModel(i) == OK_PRODUCT_XEM6010LX45) {
-	serialNumber = dev->GetDeviceListSerial(i);
-	break;
-      }
-    }
-
-    // Attempt to open device.
-    if (dev->OpenBySerial(serialNumber) != okCFrontPanelx::NoError) {
+  }
+  
+  // Attempt to open device.
+  if (dev->OpenBySerial(serialNumber) != okCFrontPanelx::NoError) 
+    {
       delete dev;
       cerr << "Device could not be opened.  Is one connected?" << endl;
       return -2;
     }
+  
+  // // Configure the on-board PLL appropriately.
+  dev->LoadDefaultPLLConfiguration();
+  
+  // Get some general information about the XEM.
+  cout << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
+  cout << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
+    dev->GetDeviceMinorVersion() << endl;
+  cout << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
+  cout << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
 
-    // // Configure the on-board PLL appropriately.
-    dev->LoadDefaultPLLConfiguration();
-
-    // Get some general information about the XEM.
-    cout << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
-    cout << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
-      dev->GetDeviceMinorVersion() << endl;
-    cout << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
-    cout << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
-    return 1;
+  cerr << "leaving Rhd2000EvalBoard::open()\n";
+  return 1;
 }
 
 // Uploads the configuration file (bitfile) to the FPGA.  Returns true if successful.
@@ -156,7 +160,6 @@ bool Rhd2000EvalBoard::uploadFpgaBitfile(string filename)
         cout << "Rhythm configuration file successfully loaded.  Rhythm version number: " <<
                 boardVersion << endl << endl;
     }
-
     return(true);
 }
 
@@ -167,13 +170,13 @@ double Rhd2000EvalBoard::getSystemClockFreq() const
     // Read back the CY22393 PLL configuation
     okCPLL22393x pll;
     dev->GetEepromPLL22393Configuration(pll);
-
     return pll.GetOutputFrequency(0);
 }
 
 // Initialize Rhythm FPGA to default starting values.
 void Rhd2000EvalBoard::initialize()
 {
+  cerr << "entering Rhd2000EvalBoard::initialize()\n";
     int i;
     resetBoard();
     setSampleRate(SampleRate20000Hz); // why is this hard coded
@@ -245,14 +248,17 @@ void Rhd2000EvalBoard::initialize()
 
     setDacManual(DacManual1, 32768);    // midrange value = 0 V
     setDacManual(DacManual2, 32768);    // midrange value = 0 V
-
+    
     setDacGain(0);
     setAudioNoiseSuppress(0);
+
+    cerr << "leaving Rhd2000EvalBoard::initialize()\n";
 }
 
 // Set the per-channel sampling rate of the RHD2000 chips connected to the FPGA.
 bool Rhd2000EvalBoard::setSampleRate(AmplifierSampleRate newSampleRate)
 {
+  cerr << "entering Rhd2000EvalBoard::setSampleRate()\n";
     // Assuming a 100 MHz reference clock is provided to the FPGA, the programmable FPGA clock frequency
     // is given by:
     //
@@ -393,7 +399,7 @@ bool Rhd2000EvalBoard::setSampleRate(AmplifierSampleRate newSampleRate)
 
     // Wait for DataClkLocked = 1 before allowing data acquisition to continue
     while (isDataClockLocked() == false) {}
-
+    cerr << "leaving Rhd2000EvalBoard::setSampleRate()\n";
     return(true);
 }
 
@@ -617,10 +623,12 @@ void Rhd2000EvalBoard::selectAuxCommandLength(AuxCmdSlot auxCommandSlot, int loo
 // per-channel sampling rate to 30.0 kS/s/ch.
 void Rhd2000EvalBoard::resetBoard()
 {
-    dev->SetWireInValue(WireInResetRun, 0x01, 0x01);
-    dev->UpdateWireIns();
-    dev->SetWireInValue(WireInResetRun, 0x00, 0x01);
-    dev->UpdateWireIns();
+  cerr << "entering Rhd2000EvalBoard::resetBoard()\n";
+  dev->SetWireInValue(WireInResetRun, 0x01, 0x01);
+  dev->UpdateWireIns();
+  dev->SetWireInValue(WireInResetRun, 0x00, 0x01);
+  dev->UpdateWireIns();
+  cerr << "leaving Rhd2000EvalBoard::resetBoard()\n";
 }
 
 // Set the FPGA to run continuously once started (if continuousMode == true) or to run until
@@ -1118,21 +1126,25 @@ void Rhd2000EvalBoard::flush()
 // was available.
 bool Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)
 {
-    unsigned int numBytesToRead;
+  cerr << "entering Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)\n";
+  unsigned int numBytesToRead;
+  
+  numBytesToRead = 2 * dataBlock->calculateDataBlockSizeInWords(numDataStreams);
+  
 
-    numBytesToRead = 2 * dataBlock->calculateDataBlockSizeInWords(numDataStreams);
-
-    if (numBytesToRead > USB_BUFFER_SIZE) {
-        cerr << "Error in Rhd2000EvalBoard::readDataBlock: USB buffer size exceeded.  " <<
-                "Increase value of USB_BUFFER_SIZE." << endl;
-        return false;
-    }
-
-    dev->ReadFromPipeOut(PipeOutData, numBytesToRead, usbBuffer);
-
-    dataBlock->fillFromUsbBuffer(usbBuffer, 0, numDataStreams);
-
-    return true;
+  cerr << "Number of bytes to read: " << numBytesToRead << '\n';
+  if (numBytesToRead > USB_BUFFER_SIZE) {
+    cerr << "Error in Rhd2000EvalBoard::readDataBlock: USB buffer size exceeded.  " <<
+      "Increase value of USB_BUFFER_SIZE." << endl;
+    return false;
+  }
+  
+  dev->ReadFromPipeOut(PipeOutData, numBytesToRead, usbBuffer);
+  
+  dataBlock->fillFromUsbBuffer(usbBuffer, 0, numDataStreams);
+  cerr << "leaving Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)\n";
+  
+  return true;
 }
 
 // Reads a certain number of USB data blocks, if the specified number is available, and appends them

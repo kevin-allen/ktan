@@ -3,9 +3,9 @@
 //
 // Intan Technoloies RHD2000 Rhythm Interface API
 // Rhd2000Registers Class
-// Version 1.0 (14 January 2013)
+// Version 1.4 (26 February 2014)
 //
-// Copyright (c) 2013 Intan Technologies LLC
+// Copyright (c) 2013-2014 Intan Technologies LLC
 //
 // This software is provided 'as-is', without any express or implied warranty.
 // In no event will the authors be held liable for any damages arising from the
@@ -37,7 +37,7 @@ using namespace std;
 // Constructor.  Set RHD2000 register variables to default values.
 Rhd2000Registers::Rhd2000Registers(double sampleRate)
 {
-    aPwr.resize(32);
+    aPwr.resize(64);
 
     defineSampleRate(sampleRate);
 
@@ -84,7 +84,7 @@ Rhd2000Registers::Rhd2000Registers(double sampleRate)
                                 // 1 = test negative inputs)
     enableZcheck(false);        // impedance testing enable/disable
 
-    setZcheckChannel(0);        // impedance testing amplifier select (0-63, but MSB is ignored, so 0-31 in practice)
+    setZcheckChannel(0);        // impedance testing amplifier select (0-63)
 
     offChipRH1 = 0;             // bandwidth resistor RH1 on/off chip (0 = on chip; 1 = off chip)
     offChipRH2 = 0;             // bandwidth resistor RH2 on/off chip (0 = on chip; 1 = off chip)
@@ -282,10 +282,10 @@ void Rhd2000Registers::setZcheckPolarity(ZcheckPolarity polarity)
     }
 }
 
-// Select the amplifier channel (0-31) for impedance testing.
+// Select the amplifier channel (0-63) for impedance testing.
 int Rhd2000Registers::setZcheckChannel(int channel)
 {
-    if (channel < 0 || channel > 31) {
+    if (channel < 0 || channel > 63) {
         return -1;
     } else {
         zcheckSelect = channel;
@@ -296,7 +296,7 @@ int Rhd2000Registers::setZcheckChannel(int channel)
 // Power up or down selected amplifier on chip
 void Rhd2000Registers::setAmpPowered(int channel, bool powered)
 {
-    if (channel >= 0 && channel <= 31) {
+    if (channel >= 0 && channel <= 63) {
         aPwr[channel] = (powered ? 1 : 0);
     }
 }
@@ -304,7 +304,7 @@ void Rhd2000Registers::setAmpPowered(int channel, bool powered)
 // Power up all amplifiers on chip
 void Rhd2000Registers::powerUpAllAmps()
 {
-    for (int channel = 0; channel < 32; ++channel) {
+    for (int channel = 0; channel < 64; ++channel) {
         aPwr[channel] = 1;
     }
 }
@@ -312,7 +312,7 @@ void Rhd2000Registers::powerUpAllAmps()
 // Power down all amplifiers on chip
 void Rhd2000Registers::powerDownAllAmps()
 {
-    for (int channel = 0; channel < 32; ++channel) {
+    for (int channel = 0; channel < 64; ++channel) {
         aPwr[channel] = 0;
     }
 }
@@ -325,70 +325,86 @@ int Rhd2000Registers::getRegisterValue(int reg) const
     const int zcheckDac = 128;  // midrange
 
     switch (reg) {
-        case 0:
-            regout = (adcReferenceBw << 6) + (ampFastSettle << 5) + (ampVrefEnable << 4) +
-                    (adcComparatorBias << 2) + adcComparatorSelect;
-            break;
-        case 1:
-            regout = (vddSenseEnable << 6) + adcBufferBias;
-            break;
-        case 2:
-            regout = muxBias;
-            break;
-        case 3:
-            regout = (muxLoad << 5) + (tempS2 << 4) + (tempS1 << 3) + (tempEn << 2) +
-                    (digOutHiZ << 1) + digOut;
-            break;
-        case 4:
-            regout = (weakMiso << 7) + (twosComp << 6) + (absMode << 5) + (dspEn << 4) +
-                    dspCutoffFreq;
-            break;
-        case 5:
-            regout = (zcheckDacPower << 6) + (zcheckLoad << 5) + (zcheckScale << 3) +
-                    (zcheckConnAll << 2) + (zcheckSelPol << 1) + zcheckEn;
-            break;
-        case 6:
-            regout = zcheckDac;
-            break;
-        case 7:
-            regout = zcheckSelect;
-            break;
-        case 8:
-            regout = (offChipRH1 << 7) + rH1Dac1;
-            break;
-        case 9:
-            regout = (adcAux1En << 7) + rH1Dac2;
-            break;
-        case 10:
-            regout = (offChipRH2 << 7) + rH2Dac1;
-            break;
-        case 11:
-            regout = (adcAux2En << 7) + rH2Dac2;
-            break;
-        case 12:
-            regout = (offChipRL << 7) + rLDac1;
-            break;
-        case 13:
-            regout = (adcAux3En << 7) + (rLDac3 << 6) + rLDac2;
-            break;
-        case 14:
-            regout = (aPwr[7] << 7) + (aPwr[6] << 6) + (aPwr[5] << 5) + (aPwr[4] << 4) +
-                    (aPwr[3] << 3) + (aPwr[2] << 2) + (aPwr[1] << 1) + aPwr[0];
-            break;
-        case 15:
-            regout = (aPwr[15] << 7) + (aPwr[14] << 6) + (aPwr[13] << 5) + (aPwr[12] << 4) +
-                    (aPwr[11] << 3) + (aPwr[10] << 2) + (aPwr[9] << 1) + aPwr[0];
-            break;
-        case 16:
-            regout = (aPwr[23] << 7) + (aPwr[22] << 6) + (aPwr[21] << 5) + (aPwr[20] << 4) +
-                    (aPwr[19] << 3) + (aPwr[18] << 2) + (aPwr[17] << 1) + aPwr[16];
-            break;
-        case 17:
-            regout = (aPwr[31] << 7) + (aPwr[30] << 6) + (aPwr[29] << 5) + (aPwr[28] << 4) +
-                    (aPwr[27] << 3) + (aPwr[26] << 2) + (aPwr[25] << 1) + aPwr[24];
-            break;
-        default:
-            regout = -1;
+    case 0:
+        regout = (adcReferenceBw << 6) + (ampFastSettle << 5) + (ampVrefEnable << 4) +
+                (adcComparatorBias << 2) + adcComparatorSelect;
+        break;
+    case 1:
+        regout = (vddSenseEnable << 6) + adcBufferBias;
+        break;
+    case 2:
+        regout = muxBias;
+        break;
+    case 3:
+        regout = (muxLoad << 5) + (tempS2 << 4) + (tempS1 << 3) + (tempEn << 2) +
+                (digOutHiZ << 1) + digOut;
+        break;
+    case 4:
+        regout = (weakMiso << 7) + (twosComp << 6) + (absMode << 5) + (dspEn << 4) +
+                dspCutoffFreq;
+        break;
+    case 5:
+        regout = (zcheckDacPower << 6) + (zcheckLoad << 5) + (zcheckScale << 3) +
+                (zcheckConnAll << 2) + (zcheckSelPol << 1) + zcheckEn;
+        break;
+    case 6:
+        regout = zcheckDac;
+        break;
+    case 7:
+        regout = zcheckSelect;
+        break;
+    case 8:
+        regout = (offChipRH1 << 7) + rH1Dac1;
+        break;
+    case 9:
+        regout = (adcAux1En << 7) + rH1Dac2;
+        break;
+    case 10:
+        regout = (offChipRH2 << 7) + rH2Dac1;
+        break;
+    case 11:
+        regout = (adcAux2En << 7) + rH2Dac2;
+        break;
+    case 12:
+        regout = (offChipRL << 7) + rLDac1;
+        break;
+    case 13:
+        regout = (adcAux3En << 7) + (rLDac3 << 6) + rLDac2;
+        break;
+    case 14:
+        regout = (aPwr[7] << 7) + (aPwr[6] << 6) + (aPwr[5] << 5) + (aPwr[4] << 4) +
+                (aPwr[3] << 3) + (aPwr[2] << 2) + (aPwr[1] << 1) + aPwr[0];
+        break;
+    case 15:
+        regout = (aPwr[15] << 7) + (aPwr[14] << 6) + (aPwr[13] << 5) + (aPwr[12] << 4) +
+                (aPwr[11] << 3) + (aPwr[10] << 2) + (aPwr[9] << 1) + aPwr[0];
+        break;
+    case 16:
+        regout = (aPwr[23] << 7) + (aPwr[22] << 6) + (aPwr[21] << 5) + (aPwr[20] << 4) +
+                (aPwr[19] << 3) + (aPwr[18] << 2) + (aPwr[17] << 1) + aPwr[16];
+        break;
+    case 17:
+        regout = (aPwr[31] << 7) + (aPwr[30] << 6) + (aPwr[29] << 5) + (aPwr[28] << 4) +
+                (aPwr[27] << 3) + (aPwr[26] << 2) + (aPwr[25] << 1) + aPwr[24];
+        break;
+    case 18:
+        regout = (aPwr[39] << 7) + (aPwr[38] << 6) + (aPwr[37] << 5) + (aPwr[36] << 4) +
+                (aPwr[35] << 3) + (aPwr[34] << 2) + (aPwr[33] << 1) + aPwr[32];
+        break;
+    case 19:
+        regout = (aPwr[47] << 7) + (aPwr[46] << 6) + (aPwr[45] << 5) + (aPwr[44] << 4) +
+                (aPwr[43] << 3) + (aPwr[42] << 2) + (aPwr[41] << 1) + aPwr[40];
+        break;
+    case 20:
+        regout = (aPwr[55] << 7) + (aPwr[54] << 6) + (aPwr[53] << 5) + (aPwr[52] << 4) +
+                (aPwr[51] << 3) + (aPwr[50] << 2) + (aPwr[49] << 1) + aPwr[48];
+        break;
+    case 21:
+        regout = (aPwr[63] << 7) + (aPwr[62] << 6) + (aPwr[61] << 5) + (aPwr[60] << 4) +
+                (aPwr[59] << 3) + (aPwr[58] << 2) + (aPwr[57] << 1) + aPwr[56];
+        break;
+    default:
+        regout = -1;
     }
     return regout;
 }
@@ -716,6 +732,7 @@ int Rhd2000Registers::createRhd2000Command(Rhd2000CommandType commandType, int a
     }
 }
 
+
 // Create a list of 60 commands to program most RAM registers on a RHD2000 chip, read those values
 // back to confirm programming, read ROM registers, and (if calibrate == true) run ADC calibration.
 // Returns the length of the command list.
@@ -799,11 +816,15 @@ int Rhd2000Registers::createCommandListRegisterConfig(vector<int> &commandList, 
         commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));
     }
 
-    // End with a few dummy commands
-    commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));
-    commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));
-    commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));
-    commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));
+    // Added in Version 1.2:
+    // Program amplifier 31-63 power up/down registers in case a RHD2164 is connected
+    // Note: We don't read these registers back, since they are only 'visible' on MISO B.
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 18, getRegisterValue(18)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 19, getRegisterValue(19)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 20, getRegisterValue(20)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 21, getRegisterValue(21)));
+
+    // End with a dummy command
     commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));
 
 
@@ -877,6 +898,75 @@ int Rhd2000Registers::createCommandListTempSensor(vector<int> &commandList)
         commandList.push_back(createRhd2000Command(Rhd2000CommandConvert, 33));     // sample AuxIn2
         commandList.push_back(createRhd2000Command(Rhd2000CommandConvert, 34));     // sample AuxIn3
         commandList.push_back(createRhd2000Command(Rhd2000CommandRegRead, 63));      // dummy command
+    }
+
+    return commandList.size();
+}
+
+// Create a list of 60 commands to update Register 3 (controlling the auxiliary digital ouput
+// pin) every sampling period.
+//
+// Since this command list consists of writing to Register 3, it also sets the state of the
+// on-chip temperature sensor.  The temperature sensor settings are therefore changed throughout
+// this command list to coordinate with the 60-command list generated by createCommandListTempSensor().
+//
+// Returns the length of the command list.
+int Rhd2000Registers::createCommandListUpdateDigOut(vector<int> &commandList)
+{
+    int i;
+
+    commandList.clear();    // if command list already exists, erase it and start a new one
+
+    tempEn = 1;
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    tempS1 = tempEn;
+    tempS2 = 0;
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    tempS1 = tempEn;
+    tempS2 = tempEn;
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    tempS1 = 0;
+    tempS2 = tempEn;
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    tempS1 = 0;
+    tempS2 = 0;
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+    commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+
+    for (i = 0; i < 8; ++i) {
+        commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+        commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+        commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
+        commandList.push_back(createRhd2000Command(Rhd2000CommandRegWrite, 3, getRegisterValue(3)));
     }
 
     return commandList.size();
