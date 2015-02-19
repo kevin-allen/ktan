@@ -28,6 +28,16 @@ void print_options();
 void print_version();
 void print_help();
 void openInterfaceBoard();
+
+
+/* mutex to prevent thread to read from a buffer that is being modified
+ all parts of code reading or writing to acquisition.data_buffer should
+ be surrounded by 
+ pthread_mutex_lock(&mutex1); and   pthread_mutex_unlock(&mutex1);
+*/
+pthread_mutex_t acquisition_data_buffer;
+
+
 int main (int argc, char *argv[])
 {
   int non_opt_arguments; // given by user
