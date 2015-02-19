@@ -12,10 +12,14 @@
 #define REGISTER_59_MISO_A  53
 #define REGISTER_59_MISO_B  58
 
+#define SAMPLES_PER_DATA_BLOCK  60
+
 
 class mainWindow: public Gtk::Window
 {
  private:
+
+
   Rhd2000EvalBoard *evalBoard;
   int errorCode;
   bool fastSettleEnabled;
@@ -34,31 +38,27 @@ class mainWindow: public Gtk::Window
   double actualImpedanceFreq;
   bool impedanceFreqValid;
 
-  
-
   // digital to analog converters
   int numDacs;
   bool* dacEnabled;
   int* chipId;
-
   int evalBoardMode;
   
   // for leds
   int ttlOut[16];
-
   // variable changed with sampling rate
   int sampleRate;
   double boardSampleRate;
   int numUsbBlocksToRead;
-
   // cable length for the different ports
   double cableLengthPortA;  // in meters
   double cableLengthPortB;  // in meters
   double cableLengthPortC;  // in meters
   double cableLengthPortD;  // in meters
-
   int numPorts;
   bool* portEnabled;
+  queue<Rhd2000DataBlock> dataQueue;
+  queue<Rhd2000DataBlock> bufferQueue;
 
   bool running;
   
@@ -68,7 +68,9 @@ class mainWindow: public Gtk::Window
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
   void runInterfaceBoard();
+  int loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,int numBlocks,queue<Rhd2000DataBlock> &bufferQueue);
   void stopInterfaceBoard();
+
 
 
  public:

@@ -3,6 +3,7 @@
 #include "rhd2000registers.h"
 #include <iostream>
 #include <stdlib.h> 
+#include <stdint.h>
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
@@ -40,12 +41,15 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
     chipId[i]=-1;
 
   evalBoardMode=0;  
+  evalBoard = new Rhd2000EvalBoard;
   openInterfaceBoard();// opel kelly 
   
   scanPorts(); // intan boards
 
+  runInterfaceBoard();
+
   cerr << "leaving mainWindow::mainWindow()\n";
-  sleep(1);
+
 }
 
 mainWindow::~mainWindow()
@@ -53,6 +57,7 @@ mainWindow::~mainWindow()
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
+  delete evalBoard;
 }
 
 void mainWindow::openInterfaceBoard()
@@ -62,7 +67,6 @@ void mainWindow::openInterfaceBoard()
   // function called from the gui to set up the board
   // so that it is ready to record.
   errorCode=0;
-  evalBoard = new Rhd2000EvalBoard;
   // Open Opal Kelly XEM6010 board.
   errorCode = evalBoard->open();
   if (errorCode < 1) 
@@ -927,338 +931,210 @@ int mainWindow::deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register5
 // waveform data over USB port.
 void mainWindow::runInterfaceBoard()
 {
+  cerr << "entering  mainWindow::runInterfaceBoard() \n";
   
-    bool newDataReady;
-    int triggerIndex;
-    //  QTime timer;
-    int extraCycles = 0;
-    int timestampOffset = 0;
-    unsigned int preTriggerBufferQueueLength = 0;
-    queue<Rhd2000DataBlock> bufferQueue;
+  bool newDataReady;
+  int triggerIndex;
+  //  QTime timer;
+  int extraCycles = 0;
+  int timestampOffset = 0;
+  unsigned int preTriggerBufferQueueLength = 0;
+  queue<Rhd2000DataBlock> bufferQueue;
+  running = true;
+  
+  // Turn LEDs on to indicate that data acquisition is running.
+  ttlOut[15] = 1;
+  int ledArray[8] = {1, 0, 0, 0, 0, 0, 0, 0};
+  int ledIndex = 0;
+  evalBoard->setLedDisplay(ledArray);
+  evalBoard->setTtlOut(ttlOut);
+  
+  
+  unsigned int dataBlockSize;
+  dataBlockSize = Rhd2000DataBlock::calculateDataBlockSizeInWords(evalBoard->getNumEnabledDataStreams());
+  unsigned int wordsInFifo;
+  double fifoPercentageFull, fifoCapacity, samplePeriod, latency;
+  long long totalBytesWritten = 0;
+  double totalRecordTimeSeconds = 0.0;
+  double recordTimeIncrementSeconds = numUsbBlocksToRead * Rhd2000DataBlock::getSamplesPerDataBlock() / boardSampleRate;
+  
+  // Calculate the number of bytes per minute that we will be saving to disk
+  // if recording data (excluding headers).
+  //  double bytesPerMinute = Rhd2000DataBlock::getSamplesPerDataBlock() * ((double) signalProcessor->bytesPerBlock(saveFormat, saveTemp, saveTtlOut) /  (double) Rhd2000DataBlock::getSamplesPerDataBlock()) * boardSampleRate;
+  
+  samplePeriod = 1.0 / boardSampleRate;
+  fifoCapacity = Rhd2000EvalBoard::fifoCapacityInWords();
+  
+  evalBoard->setContinuousRunMode(true);
+  evalBoard->run();
+  
+  
+  int counter=0;
+  
+  //    while (running) {
+  while(counter<400)
+    {
 
-    /*
-    if (triggerSet) {
-        preTriggerBufferQueueLength = numUsbBlocksToRead *
-                (qCeil(recordTriggerBuffer /
-                      (numUsbBlocksToRead * Rhd2000DataBlock::getSamplesPerDataBlock() / boardSampleRate)) + 1);
+      cerr << "within the while(counter<1) loop\n";
+      
+      // this puts the new usb blocks into dataQueue 
+      newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
+      
+      cerr << "newDataReady in dataQueue: " << newDataReady << '\n';
+
+      // If new data is ready, then read it.
+      if (newDataReady) 
+	{
+	  // Check the number of words stored in the Opal Kelly USB interface FIFO.
+	  wordsInFifo = evalBoard->numWordsInFifo();
+	  latency = 1000.0 * Rhd2000DataBlock::getSamplesPerDataBlock() * (wordsInFifo / dataBlockSize) * samplePeriod;
+	  fifoPercentageFull = 100.0 * wordsInFifo / fifoCapacity;
+	  
+	  // Alert the user if the number of words in the FIFO is getting to be significant
+	  // or nearing FIFO capacity.
+	  cerr << "fifo latency: " << latency << " ms\n";
+	  if (latency > 50.0) 
+	    cerr << "fifo latency too long\n";
+	  cerr << "fifo percentage full: " << fifoPercentageFull << "%\n";
+	  if (fifoPercentageFull > 75.0) 
+	    cerr << "fifo too full\n";
+	  
+	  
+	  // Read waveform data from USB interface board.
+	  loadAmplifierData(dataQueue, (int) numUsbBlocksToRead, bufferQueue);
+	  
+	}
+
+      // If the USB interface FIFO (on the FPGA board) exceeds 99% full, halt
+      // data acquisition and display a warning message.
+      if (fifoPercentageFull > 99.0) 
+	{
+	  running = false;
+	  // Stop data acquisition
+	  evalBoard->setContinuousRunMode(false);
+	  evalBoard->setMaxTimeStep(0);
+	  // Turn off LED.
+	  for (int i = 0; i < 8; ++i) ledArray[i] = 0;
+	  ttlOut[15] = 0;
+	  evalBoard->setLedDisplay(ledArray);
+	  evalBoard->setTtlOut(ttlOut);
+	  // warn user
+	  cerr << "USB Buffer Overrun Error\n";
+	  cerr << "Acquisition was stop\n";
+	  cerr << "This happens when the host computer \n"
+	       << "cannot keep up with the data streaming from the interface board.\n";
+	}
+      
+      // Advance LED display
+      ledArray[ledIndex] = 0;
+      ledIndex++;
+      if (ledIndex == 8) 
+	ledIndex = 0;
+      ledArray[ledIndex] = 1;
+      evalBoard->setLedDisplay(ledArray);
+    
+      counter++;
     }
-
-    QSound triggerBeep(QDir::tempPath() + "/triggerbeep.wav");
-
-    // Average temperature sensor readings over a ~0.1 second interval.
-    signalProcessor->tempHistoryReset(numUsbBlocksToRead * 3);
-
-    running = true;
-    wavePlot->setFocus();
-
-    // Enable stop button on GUI while running
-    stopButton->setEnabled(true);
-
-    // Disable various buttons on GUI while running
-    runButton->setEnabled(false);
-    recordButton->setEnabled(false);
-    triggerButton->setEnabled(false);
-
-    baseFilenameButton->setEnabled(false);
-    renameChannelButton->setEnabled(false);
-    changeBandwidthButton->setEnabled(false);
-    impedanceFreqSelectButton->setEnabled(false);
-    runImpedanceTestButton->setEnabled(false);
-    scanButton->setEnabled(false);
-    setCableDelayButton->setEnabled(false);
-    digOutButton->setEnabled(false);
-    setSaveFormatButton->setEnabled(false);
-
-    // Turn LEDs on to indicate that data acquisition is running.
-    ttlOut[15] = 1;
-    int ledArray[8] = {1, 0, 0, 0, 0, 0, 0, 0};
-    int ledIndex = 0;
-    if (!synthMode) {
-        evalBoard->setLedDisplay(ledArray);
-        evalBoard->setTtlOut(ttlOut);
-    }
-
-    unsigned int dataBlockSize;
-
-    if (synthMode) {
-        dataBlockSize = Rhd2000DataBlock::calculateDataBlockSizeInWords(1);
-    } else {
-        dataBlockSize = Rhd2000DataBlock::calculateDataBlockSizeInWords(
-                    evalBoard->getNumEnabledDataStreams());
-    }
-
-    unsigned int wordsInFifo;
-    double fifoPercentageFull, fifoCapacity, samplePeriod, latency;
-    long long totalBytesWritten = 0;
-    double totalRecordTimeSeconds = 0.0;
-    double recordTimeIncrementSeconds = numUsbBlocksToRead *
-            Rhd2000DataBlock::getSamplesPerDataBlock() / boardSampleRate;
-
-    // Calculate the number of bytes per minute that we will be saving to disk
-    // if recording data (excluding headers).
-    double bytesPerMinute = Rhd2000DataBlock::getSamplesPerDataBlock() *
-            ((double) signalProcessor->bytesPerBlock(saveFormat, saveTemp, saveTtlOut) /
-             (double) Rhd2000DataBlock::getSamplesPerDataBlock()) * boardSampleRate;
-
-    samplePeriod = 1.0 / boardSampleRate;
-    fifoCapacity = Rhd2000EvalBoard::fifoCapacityInWords();
-
-    if (recording) {
-        setStatusBarRecording(bytesPerMinute);
-    } else if (triggerSet) {
-        setStatusBarWaitForTrigger();
-    } else {
-        setStatusBarRunning();
-    }
-
-    if (!synthMode) {
-        evalBoard->setContinuousRunMode(true);
-        evalBoard->run();
-    } else {
-        timer.start();
-    }
-
-    while (running) {
-        // If we are running in demo mode, use a timer to periodically generate more synthetic
-        // data.  If not, wait for a certain amount of data to be ready from the USB interface board.
-        if (synthMode) {
-            newDataReady = (timer.elapsed() >=
-                            ((int) (1000.0 * 60.0 * (double) numUsbBlocksToRead / boardSampleRate)));
-        } else {
-            newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
-        }
-
-        // If new data is ready, then read it.
-        if (newDataReady) {
-            // statusBarLabel->setText("Running.  Extra CPU cycles: " + QString::number(extraCycles));
-
-            if (synthMode) {
-                timer.start();  // restart timer
-                fifoPercentageFull = 0.0;
-
-                // Generate synthetic data
-                totalBytesWritten +=
-                        signalProcessor->loadSyntheticData(numUsbBlocksToRead,
-                                                           boardSampleRate, recording,
-                                                           *saveStream, saveFormat, saveTemp, saveTtlOut);
-            } else {
-                // Check the number of words stored in the Opal Kelly USB interface FIFO.
-                wordsInFifo = evalBoard->numWordsInFifo();
-                latency = 1000.0 * Rhd2000DataBlock::getSamplesPerDataBlock() *
-                        (wordsInFifo / dataBlockSize) * samplePeriod;
-
-                fifoPercentageFull = 100.0 * wordsInFifo / fifoCapacity;
-
-                // Alert the user if the number of words in the FIFO is getting to be significant
-                // or nearing FIFO capacity.
-
-                fifoLagLabel->setText(QString::number(latency, 'f', 0) + " ms");
-                if (latency > 50.0) {
-                    fifoLagLabel->setStyleSheet("color: red");
-                } else {
-                    fifoLagLabel->setStyleSheet("color: green");
-                }
-
-                fifoFullLabel->setText("(" + QString::number(fifoPercentageFull, 'f', 0) + "% full)");
-                if (fifoPercentageFull > 75.0) {
-                    fifoFullLabel->setStyleSheet("color: red");
-                } else {
-                    fifoFullLabel->setStyleSheet("color: black");
-                }
-                // Read waveform data from USB interface board.
-                totalBytesWritten +=
-                        signalProcessor->loadAmplifierData(dataQueue, (int) numUsbBlocksToRead,
-                                                           triggerSet, recordTriggerChannel,
-                                                           recordTriggerPolarity, triggerIndex, bufferQueue,
-                                                           recording, *saveStream, saveFormat, saveTemp,
-                                                           saveTtlOut, timestampOffset);
-
-                while (bufferQueue.size() > preTriggerBufferQueueLength) {
-                    bufferQueue.pop();
-                }
-
-                if (triggerSet && (triggerIndex != -1)) {
-                    triggerSet = false;
-                    recording = true;
-                    timestampOffset = triggerIndex;
-
-                    // Play trigger sound
-                    triggerBeep.play();
-
-                    startNewSaveFile(saveFormat);
-
-                    // Write save file header information.
-                    writeSaveFileHeader(*saveStream, *infoStream, saveFormat, signalProcessor->getNumTempSensors());
-
-                    setStatusBarRecording(bytesPerMinute);
-
-                    totalRecordTimeSeconds = bufferQueue.size() * Rhd2000DataBlock::getSamplesPerDataBlock() / boardSampleRate;
-
-                    // Write contents of pre-trigger buffer to file.
-                    totalBytesWritten += signalProcessor->saveBufferedData(bufferQueue, *saveStream, saveFormat,
-                                                                           saveTemp, saveTtlOut, timestampOffset);
-                }
-            }
-
-            // Apply notch filter to amplifier data.
-            signalProcessor->filterData(numUsbBlocksToRead, channelVisible);
-
-            // Trigger WavePlot widget to display new waveform data.
-            wavePlot->passFilteredData();
-
-            // Trigger Spike Scope to update with new waveform data.
-            if (spikeScopeDialog) {
-                spikeScopeDialog->updateWaveform(numUsbBlocksToRead);
-            }
-
-            // If we are recording in Intan format and our data file has reached its specified
-            // maximum length (e.g., 1 minute), close the current data file and open a new one.
-
-            if (recording) {
-                totalRecordTimeSeconds += recordTimeIncrementSeconds;
-
-                if (saveFormat == SaveFormatIntan) {
-                    if (totalRecordTimeSeconds >= (60 * newSaveFilePeriodMinutes)) {
-                        closeSaveFile(saveFormat);
-                        startNewSaveFile(saveFormat);
-
-                        // Write save file header information.
-                        writeSaveFileHeader(*saveStream, *infoStream, saveFormat, signalProcessor->getNumTempSensors());
-
-                        setStatusBarRecording(bytesPerMinute);
-
-                        totalRecordTimeSeconds = 0.0;
-                    }
-                }
-            }
-
-            // If the USB interface FIFO (on the FPGA board) exceeds 99% full, halt
-            // data acquisition and display a warning message.
-            if (fifoPercentageFull > 99.0) {
-                running = false;
-
-                // Stop data acquisition
-                if (!synthMode) {
-                    evalBoard->setContinuousRunMode(false);
-                    evalBoard->setMaxTimeStep(0);
-                }
-
-                if (recording) {
-                    closeSaveFile(saveFormat);
-                    recording = false;
-                    triggerSet = false;
-                }
-
-                // Turn off LED.
-                for (int i = 0; i < 8; ++i) ledArray[i] = 0;
-                ttlOut[15] = 0;
-                if (!synthMode) {
-                    evalBoard->setLedDisplay(ledArray);
-                    evalBoard->setTtlOut(ttlOut);
-                }
-
-                QMessageBox::critical(this, tr("USB Buffer Overrun Error"),
-                                      tr("Recording was stopped because the USB FIFO buffer on the interface "
-                                         "board reached maximum capacity.  This happens when the host computer "
-                                         "cannot keep up with the data streaming from the interface board."
-                                         "<p>Try lowering the sample rate, disabling the notch filter, or reducing "
-                                         "the number of waveforms on the screen to reduce CPU load."));
-            }
-
-            // Advance LED display
-            ledArray[ledIndex] = 0;
-            ledIndex++;
-            if (ledIndex == 8) ledIndex = 0;
-            ledArray[ledIndex] = 1;
-            if (!synthMode) {
-                evalBoard->setLedDisplay(ledArray);
-            }
-        }
-        qApp->processEvents();  // Stay responsive to GUI events during this loop
-        ++extraCycles;
-    }
-
-    // Stop data acquisition (when running == false)
-    if (!synthMode) {
-        evalBoard->setContinuousRunMode(false);
-        evalBoard->setMaxTimeStep(0);
-
-        // Flush USB FIFO on XEM6010
-        evalBoard->flush();
-    }
-
-    // If external control of chip auxiliary output pins was enabled, make sure
-    // all auxout pins are turned off when acquisition stops.
-    if (!synthMode) {
-        if (auxDigOutEnabled[0] || auxDigOutEnabled[1] || auxDigOutEnabled[2] || auxDigOutEnabled[3]) {
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortA, false);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortB, false);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortC, false);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortD, false);
-            evalBoard->setMaxTimeStep(60);
-            evalBoard->run();
-            // Wait for the 60-sample run to complete.
-            while (evalBoard->isRunning()) {
-                qApp->processEvents();
-            }
-            evalBoard->flush();
-            evalBoard->setMaxTimeStep(0);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortA, auxDigOutEnabled[0]);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortB, auxDigOutEnabled[1]);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortC, auxDigOutEnabled[2]);
-            evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortD, auxDigOutEnabled[3]);
-        }
-    }
-
-    // Close save file, if recording.
-    if (recording) {
-        closeSaveFile(saveFormat);
-        recording = false;
-    }
-
-    // Reset trigger
-    triggerSet = false;
-
-    totalRecordTimeSeconds = 0.0;
-
-    // Turn off LED.
-    for (int i = 0; i < 8; ++i) ledArray[i] = 0;
-    ttlOut[15] = 0;
-    if (!synthMode) {
-        evalBoard->setLedDisplay(ledArray);
-        evalBoard->setTtlOut(ttlOut);
-    }
-
-    setStatusBarReady();
-
-    // Enable/disable various GUI buttons.
-
-    runButton->setEnabled(true);
-    recordButton->setEnabled(validFilename);
-    triggerButton->setEnabled(validFilename);
-    stopButton->setEnabled(false);
-
-    baseFilenameButton->setEnabled(true);
-    renameChannelButton->setEnabled(true);
-    changeBandwidthButton->setEnabled(true);
-    impedanceFreqSelectButton->setEnabled(true);
-    runImpedanceTestButton->setEnabled(impedanceFreqValid);
-    scanButton->setEnabled(true);
-    setCableDelayButton->setEnabled(true);
-    digOutButton->setEnabled(true);
-
-    enableChannelButton->setEnabled(true);
-    enableAllButton->setEnabled(true);
-    disableAllButton->setEnabled(true);
-    sampleRateComboBox->setEnabled(true);
-    setSaveFormatButton->setEnabled(true);
-
-  */
-
+  
+  evalBoard->setContinuousRunMode(false);
+  evalBoard->setMaxTimeStep(0);
+  
+  // Flush USB FIFO on XEM6010
+  evalBoard->flush();
+  
+  sleep(2);
+  running = false; 
+  
+  // Turn off LED.
+  for (int i = 0; i < 8; ++i) ledArray[i] = 0;
+  ttlOut[15] = 0;
+  evalBoard->setLedDisplay(ledArray);
+  evalBoard->setTtlOut(ttlOut);
+  cerr << "leaving mainWindow::runInterfaceBoard() \n";
+  
 }
 
 // Stop SPI data acquisition.
 void mainWindow::stopInterfaceBoard()
 {
     running = false;
+}
+
+
+
+
+// Reads numBlocks blocks of raw USB data stored in a queue of Rhd2000DataBlock
+// objects, loads this data into this SignalProcessor object, scaling the raw
+// data to generate waveforms with units of volts or microvolts.
+//
+// If lookForTrigger is true, this function looks for a trigger on digital input
+// triggerChannel with triggerPolarity.  If trigger is found, triggerTimeIndex
+// returns timestamp of trigger point.  Otherwise, triggerTimeIndex returns -1,
+// indicating no trigger was found.
+//
+// If saveToDisk is true, a disk-format binary datastream is written to QDataStream out.
+// If saveTemp is true, temperature readings are also saved.  A timestampOffset can be
+// used to reference the trigger point to zero.
+//
+// Returns number of bytes written to binary datastream out if saveToDisk == true.
+int mainWindow::loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,
+				  int numBlocks,
+				  queue<Rhd2000DataBlock> &bufferQueue)
+{
+
+  // current data from usb are in dataQueue
+
+  cerr << "entering mainWindow::loadAmplifierData\n";
+
+  int block, t, channel, stream, i, j;
+  int indexAmp = 0;
+  int indexDig = 0;
+  int numWordsWritten = 0;
+   
+ 
+  for (block = 0; block < numBlocks; ++block) 
+    {
+      cerr << "block " << block << '\n';
+      /*
+      // Load and scale RHD2000 amplifier waveforms
+      // (sampled at amplifier sampling rate)
+      for (t = 0; t < SAMPLES_PER_DATA_BLOCK; ++t) 
+	{
+	  for (channel = 0; channel < 32; ++channel) 
+	    {
+	      for (stream = 0; stream < numDataStreams; ++stream) 
+		{
+		  // Amplifier waveform units = microvolts
+		  amplifierPreFilter[stream][channel][indexAmp] = 0.195 *
+		    (dataQueue.front().amplifierData[stream][channel][t] - 32768);
+		}
+	    }
+	  ++indexAmp;
+        }
+      
+      // Load and scale RHD2000 auxiliary input waveforms
+      // (sampled at 1/4 amplifier sampling rate)
+      for (t = 0; t < SAMPLES_PER_DATA_BLOCK; t += 4) 
+	{
+	  // Load USB interface board digital input and output waveforms
+	  for (t = 0; t < SAMPLES_PER_DATA_BLOCK; ++t) 
+	    {
+	      for (channel = 0; channel < 16; ++channel) 
+		{
+		  boardDigIn[channel][indexDig] =
+		    (dataQueue.front().ttlIn[t] & (1 << channel)) != 0;
+		  boardDigOut[channel][indexDig] =
+		    (dataQueue.front().ttlOut[t] & (1 << channel)) != 0;
+		  
+		}
+	      ++indexDig;
+	    }
+	}
+	  // We are done with this Rhd2000DataBlock object; remove it from dataQueue
+        dataQueue.pop();
+      */
+    }
+ 
+  cerr << "leaving mainWindow::loadAmplifierData\n";
+  return 0;
 }
