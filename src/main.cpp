@@ -156,6 +156,9 @@ int main (int argc, char *argv[])
     }
   mainWindow* window =0; // defined in mainWindow.h and .cpp
   refBuilder->get_widget_derived("window",window);
+
+  delete window;
+  
   //  app->run(*window);
   return 0;
 }

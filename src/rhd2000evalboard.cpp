@@ -1126,13 +1126,8 @@ void Rhd2000EvalBoard::flush()
 // was available.
 bool Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)
 {
-  cerr << "entering Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)\n";
   unsigned int numBytesToRead;
-  
   numBytesToRead = 2 * dataBlock->calculateDataBlockSizeInWords(numDataStreams);
-  
-
-  cerr << "Number of bytes to read: " << numBytesToRead << '\n';
   if (numBytesToRead > USB_BUFFER_SIZE) {
     cerr << "Error in Rhd2000EvalBoard::readDataBlock: USB buffer size exceeded.  " <<
       "Increase value of USB_BUFFER_SIZE." << endl;
@@ -1140,10 +1135,7 @@ bool Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)
   }
   
   dev->ReadFromPipeOut(PipeOutData, numBytesToRead, usbBuffer);
-  
   dataBlock->fillFromUsbBuffer(usbBuffer, 0, numDataStreams);
-  cerr << "leaving Rhd2000EvalBoard::readDataBlock(Rhd2000DataBlock *dataBlock)\n";
-  
   return true;
 }
 
@@ -1168,13 +1160,14 @@ bool Rhd2000EvalBoard::readDataBlocks(int numBlocks, queue<Rhd2000DataBlock> &da
         return false;
     }
 
-    dev->ReadFromPipeOut(PipeOutData, numBytesToRead, usbBuffer);
+    dev->ReadFromPipeOut(PipeOutData, numBytesToRead, usbBuffer); // read into usbBuffer
 
     dataBlock = new Rhd2000DataBlock(numDataStreams);
-    for (i = 0; i < numBlocks; ++i) {
-        dataBlock->fillFromUsbBuffer(usbBuffer, i, numDataStreams);
-        dataQueue.push(*dataBlock);
-    }
+    for (i = 0; i < numBlocks; ++i) 
+      {
+	dataBlock->fillFromUsbBuffer(usbBuffer, i, numDataStreams); // fill a dataBlock from usbBuffer
+        dataQueue.push(*dataBlock); // add datablock to the dataQueue
+      }
     delete dataBlock;
 
     return true;
