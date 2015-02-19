@@ -927,15 +927,16 @@ int mainWindow::deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register5
 // waveform data over USB port.
 void mainWindow::runInterfaceBoard()
 {
-  /*
+  
     bool newDataReady;
     int triggerIndex;
-    QTime timer;
+    //  QTime timer;
     int extraCycles = 0;
     int timestampOffset = 0;
     unsigned int preTriggerBufferQueueLength = 0;
     queue<Rhd2000DataBlock> bufferQueue;
 
+    /*
     if (triggerSet) {
         preTriggerBufferQueueLength = numUsbBlocksToRead *
                 (qCeil(recordTriggerBuffer /

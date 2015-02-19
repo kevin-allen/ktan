@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.64)
-AC_INIT([kacqtan],[0.1],[allen@uni-heidelberg.de],[kacqtan],[])
+AC_INIT([ktan],[0.1],[allen@uni-heidelberg.de],[ktan],[])
 AC_COPYRIGHT([Copyright (C) 2011 Kevin Allen])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/main.cpp])

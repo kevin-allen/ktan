@@ -1,20 +1,20 @@
 /************************************
 Copyright (C) 2013 Kevin Allen
 
-This file is part of kacqtan.
+This file is part of ktan.
 
-kacqtan is free software: you can redistribute it and/or modify
+ktan is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-kacqtan is distributed in the hope that it will be useful,
+ktan is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with kacqtan.  If not, see <http://www.gnu.org/licenses/>.
+along with ktan.  If not, see <http://www.gnu.org/licenses/>.
 
 Date: 01.08.2010
 *************************************/
@@ -35,7 +35,7 @@ int main (int argc, char *argv[])
   // to get the options
   int opt; 
   int i;
-  char * terminal_configuration_file; // configuration file to run kacqtan in terminal mode
+  char * terminal_configuration_file; // configuration file to run ktan in terminal mode
   // flag for each option
   int with_h_opt=0; // help
   int with_v_opt=0; // version
@@ -137,7 +137,7 @@ int main (int argc, char *argv[])
   Glib::RefPtr<Gtk::Builder> refBuilder = Gtk::Builder::create();
   try
     {
-      refBuilder->add_from_file("kacqtan.glade");
+      refBuilder->add_from_file("ktan.glade");
     }
   catch(const Glib::FileError& ex)
     {
@@ -172,7 +172,7 @@ void print_help()
 {
   printf("\n");
   printf("%s %s is a program to record physiological data on Gnu/Linux computers and is available at %s\n\n",PACKAGE_NAME,PACKAGE_VERSION,PACKAGE_URL);
-  printf("When executed without option or argument, kacqtan starts its graphical user interface. Use the following options to run in the terminal mode.\n\n");
+  printf("When executed without option or argument, ktan starts its graphical user interface. Use the following options to run in the terminal mode.\n\n");
   print_options();
   printf("\n");
   printf("report bugs: %s\n\n",PACKAGE_BUGREPORT);
