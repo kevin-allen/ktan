@@ -4,12 +4,13 @@
 #include "rhd2000evalboard.h"
 #include "acquisition.h"
 #include "timeKeeper.h"
-
+#include "dataBuffer.h"
 
 class mainWindow: public Gtk::Window
 {
  private:
   acquisition* acq;
+  dataBuffer* db; // data buffer not deutsche bahn
   pthread_t acquisition_thread;
   int acquisition_thread_id;
 

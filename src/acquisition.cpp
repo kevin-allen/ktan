@@ -7,12 +7,12 @@
 #include <stdint.h>
 #include <unistd.h>
 
-
-
-acquisition::acquisition()
+acquisition::acquisition(dataBuffer* dbuffer)
 {
   cout << "entering acquisition::acquisition()\n";
 
+  db=dbuffer; // get the address of the data buffer
+  localBuffer=NULL;
   // Default amplifier bandwidth settings
   desiredLowerBandwidth = 0.1;
   desiredUpperBandwidth = 7500.0;
@@ -43,21 +43,20 @@ acquisition::acquisition()
   
   scanPorts(); // intan boards
 
-  // Allocate memory for an internal buffer that can be used by other objects 
-  buffer_size= MAX_BUFFER_LENGTH;
-  buffer_data = new short int [buffer_size];
   is_acquiring=false;
-  number_samples_read=0;
-  sample_no_to_add=0;
   inter_acquisition_sleep_ms=ACQUISITION_SLEEP_TIME_MS;
   inter_acquisition_sleep_timespec=tk.set_timespec_from_ms(inter_acquisition_sleep_ms);
   pause_restart_acquisition_thread_ms=100;
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
-  max_number_samples_in_buffer=buffer_size/numAmplifierChannels;
+
+
+  // set some variables in the dataBuffer object
+  db->max_number_samples_in_buffer=db->buffer_size/numAmplifierChannels;
+  db->number_channels=numAmplifierChannels;
 
   
   //runInterfaceBoard();
-  cout << "leaving acquisition::acquisition()\n";
+  cerr << "leaving acquisition::acquisition()\n";
 
 }
 
@@ -67,9 +66,10 @@ acquisition::~acquisition()
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
+  if(localBuffer!=NULL)
+    delete[] localBuffer;
   delete evalBoard;
-  delete[] buffer_data;
-  cout << "leaving acquisition::~acquisition()\n";
+  cerr << "leaving acquisition::~acquisition()\n";
 }
 
 void acquisition::openInterfaceBoard()
@@ -338,7 +338,7 @@ void acquisition::findConnectedAmplifiers()
 	  id = deviceId(dataBlock, stream, register59Value);
 	  if (id == CHIP_ID_RHD2132 || id == CHIP_ID_RHD2216 || (id == CHIP_ID_RHD2164 && register59Value == REGISTER_59_MISO_A)) 
 	    {
-	      cout << "Delay: " << delay << " on stream " << stream << " is good." << endl;
+	      cerr << "Delay: " << delay << " on stream " << stream << " is good." << endl;
 	      numChips++;
 	      sumGoodDelays[stream] = sumGoodDelays[stream] + 1;
 	      if (indexFirstGoodDelay[stream] == -1) 
@@ -515,6 +515,8 @@ void acquisition::findConnectedAmplifiers()
     }
 
   cerr << "number of usb stream enabled: " << stream << "\n";
+  numStreams=stream;
+
   // Disable unused data streams.
   for (; stream < MAX_NUM_DATA_STREAMS; ++stream)
     evalBoard->enableDataStream(stream, false);
@@ -528,6 +530,8 @@ void acquisition::findConnectedAmplifiers()
       else
 	portEnabled[port]=true;
     }
+
+
   
   /*
   // Add channel descriptions to the SignalSources object to create a list of all waveforms.
@@ -708,6 +712,12 @@ void acquisition::findConnectedAmplifiers()
 */
   changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz);
 
+
+
+  
+  localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*numAmplifierChannels];
+  
+
   delete[] portIndex;
   delete[] portIndexOld;
   delete[] chipIdOld;
@@ -725,9 +735,8 @@ void acquisition::findConnectedAmplifiers()
 // sequences that are used to set RAM registers on the RHD2000 chips.
 void acquisition::changeSampleRate(int sampleRateIndex)
 {
-
+  
   cerr << "Entering MainWindow::changeSampleRate(" << sampleRateIndex << ")\n";
-
   
   Rhd2000EvalBoard::AmplifierSampleRate sampleRate =
     Rhd2000EvalBoard::SampleRate1000Hz;
@@ -823,7 +832,7 @@ void acquisition::changeSampleRate(int sampleRateIndex)
     break;
   }
   
-  cout << "New sampling rate " << boardSampleRate << " Hz\n";
+  cerr << "New sampling rate " << boardSampleRate << " Hz\n";
 
   // Set up an RHD2000 register object using this sample rate to
   // optimize MUX-related register settings.
@@ -971,32 +980,23 @@ bool acquisition::start_acquisition()
  
   // Turn LEDs on to indicate that data acquisition is running.
   ttlOut[15] = 1;
-  int ledArray[8] = {1, 0, 0, 0, 0, 0, 0, 0};
+  for (int i = 0; i < 8; i++)
+    ledArray[i]=0;
+  ledArray[0]=1;
   evalBoard->setLedDisplay(ledArray);
   evalBoard->setTtlOut(ttlOut);
-
+  // set some variables for acquisition
   dataBlockSize = Rhd2000DataBlock::calculateDataBlockSizeInWords(evalBoard->getNumEnabledDataStreams());
-
   samplePeriod = 1.0 / boardSampleRate;
   fifoCapacity = Rhd2000EvalBoard::fifoCapacityInWords();
-  
+  // start the board
   evalBoard->setContinuousRunMode(true);
   evalBoard->run();
   is_acquiring = true;
-
   cerr << "leaving  acquisition::start_acquisition() \n";
   return true;
 }
 
-
-void *acquisition::acquisition_thread_function(void)
-{
-  while(is_acquiring==true)
-    {
-      std::cout << "Hello, world!" << std::endl;
-      sleep(1);
-    }
-}
 
 
 
@@ -1010,121 +1010,99 @@ bool acquisition::stop_acquisition()
 
   is_acquiring = false;
 
+  evalBoard->setContinuousRunMode(false);
+  evalBoard->setMaxTimeStep(0);
+  
+  // give time to acquisition thread to die
+  nanosleep(&inter_acquisition_sleep_timespec,&req);
+
+  // Flush USB FIFO on XEM6010
+  evalBoard->flush();
+
+  turnOffLED();
+  printLocalBuffer();
+  cerr << "leaving  acquisition::stop_acquisition() \n";
+  return true;
+}
+
+void acquisition::checkFifoOK()
+{
+  // Check the number of words stored in the Opal Kelly USB interface FIFO.
+  wordsInFifo = evalBoard->numWordsInFifo();
+  latency = 1000.0 * Rhd2000DataBlock::getSamplesPerDataBlock() * (wordsInFifo / dataBlockSize) * samplePeriod;
+  fifoPercentageFull = 100.0 * wordsInFifo / fifoCapacity;
+  
+  // Alert the user if the number of words in the FIFO is getting to be significant
+  // or nearing FIFO capacity.
+  cerr << "fifo latency: " << latency << " ms\n";
+  if (latency > 50.0) 
+    cerr << "fifo latency too long\n";
+  cerr << "fifo percentage full: " << fifoPercentageFull << "%\n";
+  if (fifoPercentageFull > 75.0) 
+    cerr << "fifo too full\n";
+  
+  // If the USB interface FIFO (on the FPGA board) exceeds 99% full, halt
+  // data acquisition and display a warning message.
+  if (fifoPercentageFull > 99.0) 
+    {
+      is_acquiring = false;
+      // Stop data acquisition
+      evalBoard->setContinuousRunMode(false);
+      evalBoard->setMaxTimeStep(0);
+      // Turn off LED.
+      turnOffLED();
+      // warn user
+      cerr << "USB Buffer Overrun Error\n";
+      cerr << "Acquisition was stop\n";
+      cerr << "This happens when the host computer \n"
+	   << "cannot keep up with the data streaming from the interface board.\n";
+    }
+
+}
+
+void *acquisition::acquisition_thread_function(void)
+{
+  ledIndex=0;
+  while(is_acquiring==true)
+    {
+      
+      // this puts the new usb blocks into dataQueue 
+      newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
+      // If new data is ready, then read it.
+      if (newDataReady) 
+	{
+	  // Read waveform data from USB interface board.
+	  move_to_dataBuffer();
+	  // play with led to impress visitors
+	  advanceLED();
+	  // check if we are fast enough to prevent buffer overflow in opal kelly board
+	  checkFifoOK();
+	}
+      // take a break here instead of looping 100% of PCU
+      nanosleep(&inter_acquisition_sleep_timespec,&req);
+    }
+}
+
+void acquisition::advanceLED()
+{
+  // Advance LED display when we get new data
+  ledArray[ledIndex] = 0;
+  ledIndex++;
+  if (ledIndex==8) 
+    ledIndex = 0;
+  ledArray[ledIndex] = 1;
+  evalBoard->setLedDisplay(ledArray);
+}
+void acquisition::turnOffLED()
+{
   // Turn off LED.
-  int ledArray[8] = {1, 0, 0, 0, 0, 0, 0, 0};
   for (int i = 0; i < 8; ++i) 
     ledArray[i] = 0;
   ttlOut[15] = 0;
   evalBoard->setLedDisplay(ledArray);
   evalBoard->setTtlOut(ttlOut);
-  
-  evalBoard->setContinuousRunMode(false);
-  evalBoard->setMaxTimeStep(0);
-  
-  // Flush USB FIFO on XEM6010
-  evalBoard->flush();
-      
-  cerr << "leaving  acquisition::stop_acquisition() \n";
-  return true;
 }
 
-
-
-
-
-
-// Start SPI communication to all connected RHD2000 amplifiers and stream
-// waveform data over USB port.
-void acquisition::runInterfaceBoard()
-{
-  cerr << "entering  acquisition::runInterfaceBoard() \n";
-  
-
-  int triggerIndex;
-  //  QTime timer;
-  int extraCycles = 0;
-  int timestampOffset = 0;
-  unsigned int preTriggerBufferQueueLength = 0;
-  queue<Rhd2000DataBlock> bufferQueue;
-
-  int ledArray[8] = {1, 0, 0, 0, 0, 0, 0, 0};
-  int ledIndex;
-  int counter=0;
-  
-  //    while (running) {
-  while(counter<400)
-    {
-
-      // this puts the new usb blocks into dataQueue 
-      newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
-      
-      cerr << "newDataReady in dataQueue: " << newDataReady << '\n';
-
-      // If new data is ready, then read it.
-      if (newDataReady) 
-	{
-	  // Check the number of words stored in the Opal Kelly USB interface FIFO.
-	  wordsInFifo = evalBoard->numWordsInFifo();
-	  latency = 1000.0 * Rhd2000DataBlock::getSamplesPerDataBlock() * (wordsInFifo / dataBlockSize) * samplePeriod;
-	  fifoPercentageFull = 100.0 * wordsInFifo / fifoCapacity;
-	  
-	  // Alert the user if the number of words in the FIFO is getting to be significant
-	  // or nearing FIFO capacity.
-	  cerr << "fifo latency: " << latency << " ms\n";
-	  if (latency > 50.0) 
-	    cerr << "fifo latency too long\n";
-	  cerr << "fifo percentage full: " << fifoPercentageFull << "%\n";
-	  if (fifoPercentageFull > 75.0) 
-	    cerr << "fifo too full\n";
-	  
-	  
-	  // Read waveform data from USB interface board.
-	  loadAmplifierData(dataQueue, (int) numUsbBlocksToRead, bufferQueue);
-	  
-	}
-
-      // If the USB interface FIFO (on the FPGA board) exceeds 99% full, halt
-      // data acquisition and display a warning message.
-      if (fifoPercentageFull > 99.0) 
-	{
-	  is_acquiring = false;
-	  // Stop data acquisition
-	  evalBoard->setContinuousRunMode(false);
-	  evalBoard->setMaxTimeStep(0);
-	  // Turn off LED.
-	  for (int i = 0; i < 8; ++i) ledArray[i] = 0;
-	  ttlOut[15] = 0;
-	  evalBoard->setLedDisplay(ledArray);
-	  evalBoard->setTtlOut(ttlOut);
-	  // warn user
-	  cerr << "USB Buffer Overrun Error\n";
-	  cerr << "Acquisition was stop\n";
-	  cerr << "This happens when the host computer \n"
-	       << "cannot keep up with the data streaming from the interface board.\n";
-	}
-      
-      // Advance LED display
-      ledArray[ledIndex] = 0;
-      ledIndex++;
-      if (ledIndex == 8) 
-	ledIndex = 0;
-      ledArray[ledIndex] = 1;
-      evalBoard->setLedDisplay(ledArray);
-    
-      counter++;
-    }
-  cerr << "leaving acquisition::runInterfaceBoard() \n";
-}
-
-
-
-
-
-// Stop SPI data acquisition.
-void acquisition::stopInterfaceBoard()
-{
-    is_acquiring = false;
-}
 
 
 
@@ -1133,16 +1111,35 @@ void acquisition::stopInterfaceBoard()
 // objects, loads this data into this SignalProcessor object, scaling the raw
 // data to generate waveforms with units of volts or microvolts.
 //
-// If lookForTrigger is true, this function looks for a trigger on digital input
-// triggerChannel with triggerPolarity.  If trigger is found, triggerTimeIndex
-// returns timestamp of trigger point.  Otherwise, triggerTimeIndex returns -1,
-// indicating no trigger was found.
-//
-// If saveToDisk is true, a disk-format binary datastream is written to QDataStream out.
-// If saveTemp is true, temperature readings are also saved.  A timestampOffset can be
-// used to reference the trigger point to zero.
-//
 // Returns number of bytes written to binary datastream out if saveToDisk == true.
+
+int acquisition::move_to_dataBuffer()
+{
+  cerr << "entering acquisition::move_to_dataBuffer\n";
+  int block, channel, stream, i, j, sample;
+  int indexAmp = 0;
+  
+  for (block = 0; block < numUsbBlocksToRead; ++block) 
+    {
+      for (sample = 0; sample < SAMPLES_PER_DATA_BLOCK; ++sample) 
+	{
+	  for (channel = 0; channel < 32; ++channel) 
+	    {
+	      for (stream = 0; stream < numStreams; ++stream) 
+		{ 
+		  //          (        sample no                  )*   total number channels  + channel no
+		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (32*numStreams) +   (channel*stream+channel) ] =
+		    (dataQueue.front().amplifierData[stream][channel][sample] - 32768);
+		  // multiply by 0.195 to get microvolt
+		}
+	    }
+	  ++indexAmp;
+        }
+      // We are done with this Rhd2000DataBlock object; remove it from dataQueue
+      dataQueue.pop();
+    }
+  cerr << "leaving acquisition::move_to_dataBuffer\n";
+}
 int acquisition::loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,
 				  int numBlocks,
 				  queue<Rhd2000DataBlock> &bufferQueue)
@@ -1203,4 +1200,13 @@ int acquisition::loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,
  
   cerr << "leaving acquisition::loadAmplifierData\n";
   return 0;
+}
+
+void acquisition::printLocalBuffer()
+{
+  for(int sample=0; sample < SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead;sample++)
+    for(int channel=0; channel < numAmplifierChannels;channel++)
+      cout << sample << " "
+	   << channel << " "
+	   << localBuffer[sample*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead+channel] << "\n";
 }

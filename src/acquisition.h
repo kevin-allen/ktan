@@ -9,11 +9,12 @@
 #define REGISTER_59_MISO_B  58
 #define SAMPLES_PER_DATA_BLOCK  60
 #define MAX_BUFFER_LENGTH 2000000 // data_buffer 
-#define ACQUISITION_SLEEP_TIME_MS 1 // if too long could lead to buffer overflow, we make it short to be up to data often
+#define ACQUISITION_SLEEP_TIME_MS 5 // if too long could lead to buffer overflow, we make it short to be up to data often
 
 #include <string>
 #include <queue>
 #include "timeKeeper.h"
+#include "dataBuffer.h"
 #include <pthread.h> // to be able to create threads
 
 using namespace std;
@@ -23,9 +24,21 @@ class Rhd2000DataBlock;
 class acquisition
 {
  public:
-  acquisition();
+  acquisition(dataBuffer* datab);
   ~acquisition();
 
+  bool start_acquisition();
+  bool stop_acquisition();
+
+  static void *acquisition_thread_helper(void *context) // helper function to start the new thread
+  {
+    ((acquisition *)context)->acquisition_thread_function();
+  }
+
+  void printLocalBuffer();
+  
+
+ private:
   Rhd2000EvalBoard *evalBoard;
   int errorCode;
   bool fastSettleEnabled;
@@ -61,8 +74,9 @@ class acquisition
   bool* portEnabled;
   queue<Rhd2000DataBlock> dataQueue;
   queue<Rhd2000DataBlock> bufferQueue;
+  int numStreams;
 
-  
+  short int * localBuffer;
 
   // variables for acquisition
   bool newDataReady;
@@ -78,25 +92,23 @@ class acquisition
   int numChips;
   int numAmplifierChannels;
 
+  // to play with leds during acquisition
+  int ledArray[8];
+  int ledIndex;
+
    // variables inherited from kacq
   bool is_acquiring; // to send signal to the comedi thread
   int acquisition_thread_running; // set by the comedi thread when enter and exit
   pthread_t acquisition_thread;
   int acquisition_thread_id;
-  int max_number_samples_in_buffer;
-  unsigned long int number_samples_read; // total samples read
-  int sample_no_to_add; // sample no of the newest sample in the buffer
-  int samples_copied_at_end_of_buffer;
-  int data_offset_to_dat; // to correct the data so that 0 is midpoint
-  unsigned int* channel_list;
-  int buffer_size;
-  short int* buffer_data;// buffer to get data from comedi devices
-  int data_points_move_back;
-  int offset_move_back;
+
+  dataBuffer* db; // pointer that will be given an address in the constructor of acquisition
+
   struct timespec time_last_sample_acquired_timespec; 
   struct timespec inter_acquisition_sleep_timespec; // between read operations to driver
   double inter_acquisition_sleep_ms;
   struct timespec timespec_pause_restat_acquisition_thread; // allow acquisition to complete
+  struct timespec req;
   double pause_restart_acquisition_thread_ms;
   timeKeeper tk;
 
@@ -107,25 +119,16 @@ class acquisition
   void findConnectedAmplifiers();
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
-  bool start_acquisition();
-  bool stop_acquisition();
 
   // thread functions
   void *acquisition_thread_function(void);
-  static void *acquisition_thread_helper(void *context)
-  {
-    ((acquisition *)context)->acquisition_thread_function();
-  }
-  
   
   int loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,int numBlocks,queue<Rhd2000DataBlock> &bufferQueue);
-  void runInterfaceBoard();
-  void stopInterfaceBoard();
+  int move_to_dataBuffer();
 
-
- private:
-  
-
+  void checkFifoOK();
+  void advanceLED();
+  void turnOffLED();
 };
 
 
