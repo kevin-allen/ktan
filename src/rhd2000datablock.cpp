@@ -3,9 +3,9 @@
 //
 // Intan Technoloies RHD2000 Rhythm Interface API
 // Rhd2000DataBlock Class
-// Version 1.0 (14 January 2013)
+// Version 1.4 (26 February 2014)
 //
-// Copyright (c) 2013 Intan Technologies LLC
+// Copyright (c) 2013-2014 Intan Technologies LLC
 //
 // This software is provided 'as-is', without any express or implied warranty.
 // In no event will the authors be held liable for any damages arising from the
@@ -33,62 +33,62 @@ using namespace std;
 // Constructor.  Allocates memory for data block.
 Rhd2000DataBlock::Rhd2000DataBlock(int numDataStreams)
 {
-  allocateUIntArray1D(timeStamp, SAMPLES_PER_DATA_BLOCK);
-  allocateIntArray3D(amplifierData, numDataStreams, 32, SAMPLES_PER_DATA_BLOCK);
-  allocateIntArray3D(auxiliaryData, numDataStreams, 3, SAMPLES_PER_DATA_BLOCK);
-  allocateIntArray2D(boardAdcData, 8, SAMPLES_PER_DATA_BLOCK);
-  allocateIntArray1D(ttlIn, SAMPLES_PER_DATA_BLOCK);
-  allocateIntArray1D(ttlOut, SAMPLES_PER_DATA_BLOCK);
+    allocateUIntArray1D(timeStamp, SAMPLES_PER_DATA_BLOCK);
+    allocateIntArray3D(amplifierData, numDataStreams, 32, SAMPLES_PER_DATA_BLOCK);
+    allocateIntArray3D(auxiliaryData, numDataStreams, 3, SAMPLES_PER_DATA_BLOCK);
+    allocateIntArray2D(boardAdcData, 8, SAMPLES_PER_DATA_BLOCK);
+    allocateIntArray1D(ttlIn, SAMPLES_PER_DATA_BLOCK);
+    allocateIntArray1D(ttlOut, SAMPLES_PER_DATA_BLOCK);
 }
 
 // Allocates memory for a 1-D array of integers.
 void Rhd2000DataBlock::allocateIntArray1D(vector<int> &array1D, int xSize)
 {
-  array1D.resize(xSize);
+    array1D.resize(xSize);
 }
 
 // Allocates memory for a 1-D array of unsigned integers.
 void Rhd2000DataBlock::allocateUIntArray1D(vector<unsigned int> &array1D, int xSize)
 {
-  array1D.resize(xSize);
+    array1D.resize(xSize);
 }
 
 // Allocates memory for a 2-D array of integers.
 void Rhd2000DataBlock::allocateIntArray2D(vector<vector<int> > & array2D, int xSize, int ySize)
 {
-  int i;
-  
-  array2D.resize(xSize);
-  for (i = 0; i < xSize; ++i)
-    array2D[i].resize(ySize);
+    int i;
+
+    array2D.resize(xSize);
+    for (i = 0; i < xSize; ++i)
+        array2D[i].resize(ySize);
 }
 
 // Allocates memory for a 3-D array of integers.
 void Rhd2000DataBlock::allocateIntArray3D(vector<vector<vector<int> > > &array3D, int xSize, int ySize, int zSize)
 {
-  int i, j;
-  
-  array3D.resize(xSize);
-  for (i = 0; i < xSize; ++i) {
-    array3D[i].resize(ySize);
-    
-    for (j = 0; j < ySize; ++j) {
-      array3D[i][j].resize(zSize);
+    int i, j;
+
+    array3D.resize(xSize);
+    for (i = 0; i < xSize; ++i) {
+        array3D[i].resize(ySize);
+
+        for (j = 0; j < ySize; ++j) {
+            array3D[i][j].resize(zSize);
+        }
     }
-  }
 }
 
 // Returns the number of samples in a USB data block.
 unsigned int Rhd2000DataBlock::getSamplesPerDataBlock()
 {
-  return SAMPLES_PER_DATA_BLOCK;
+    return SAMPLES_PER_DATA_BLOCK;
 }
 
 // Returns the number of 16-bit words in a USB data block with numDataStreams data streams enabled.
 unsigned int Rhd2000DataBlock::calculateDataBlockSizeInWords(int numDataStreams)
 {
-  return SAMPLES_PER_DATA_BLOCK * (4 + 2 + numDataStreams * 36 + 8 + 2);
-  // 4 = magic number; 2 = time stamp; 36 = (32 amp channels + 3 aux commands + 1 filler word); 8 = ADCs; 2 = TTL in/out
+    return SAMPLES_PER_DATA_BLOCK * (4 + 2 + numDataStreams * 36 + 8 + 2);
+    // 4 = magic number; 2 = time stamp; 36 = (32 amp channels + 3 aux commands + 1 filler word); 8 = ADCs; 2 = TTL in/out
 }
 
 // Check first 64 bits of USB header against the fixed Rhythm "magic number" to verify data sync.

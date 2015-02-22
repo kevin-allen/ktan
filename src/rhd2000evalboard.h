@@ -3,9 +3,9 @@
 //
 // Intan Technoloies RHD2000 Rhythm Interface API
 // Rhd2000EvalBoard Class Header File
-// Version 1.0 (14 January 2013)
+// Version 1.4 (26 February 2014)
 //
-// Copyright (c) 2013 Intan Technologies LLC
+// Copyright (c) 2013-2014 Intan Technologies LLC
 //
 // This software is provided 'as-is', without any express or implied warranty.
 // In no event will the authors be held liable for any damages arising from the
@@ -29,10 +29,9 @@
 #include <queue>
 
 using namespace std;
-class okCFrontPanelx;
+
+class okCFrontPanel;
 class Rhd2000DataBlock;
-
-
 
 class Rhd2000EvalBoard
 {
@@ -63,6 +62,7 @@ public:
         SampleRate25000Hz,
         SampleRate30000Hz
     };
+
     bool setSampleRate(AmplifierSampleRate newSampleRate);
     double getSampleRate() const;
     AmplifierSampleRate getSampleRateEnum() const;
@@ -72,6 +72,7 @@ public:
         AuxCmd2,
         AuxCmd3
     };
+
     enum BoardPort {
         PortA,
         PortB,
@@ -127,12 +128,8 @@ public:
     void setTtlOut(int ttlOutArray[]);
     void getTtlIn(int ttlInArray[]);
 
-    enum DacManual {
-        DacManual1,
-        DacManual2
-    };
+    void setDacManual(int value);
 
-    void setDacManual(DacManual dac, int value);
     void setLedDisplay(int ledArray[]);
 
     void enableDac(int dacChannel, bool enabled);
@@ -140,17 +137,29 @@ public:
     void setAudioNoiseSuppress(int noiseSuppress);
     void selectDacDataStream(int dacChannel, int stream);
     void selectDacDataChannel(int dacChannel, int dataChannel);
+    void enableExternalFastSettle(bool enable);
+    void setExternalFastSettleChannel(int channel);
+    void enableExternalDigOut(BoardPort port, bool enable);
+    void setExternalDigOutChannel(BoardPort port, int channel);
+    void enableDacHighpassFilter(bool enable);
+    void setDacHighpassFilter(double cutoff);
+    void setDacThreshold(int dacChannel, int threshold, bool trigPolarity);
+    void setTtlMode(int mode);
 
     void flush();
     bool readDataBlock(Rhd2000DataBlock *dataBlock);
     bool readDataBlocks(int numBlocks, queue<Rhd2000DataBlock> &dataQueue);
     int queueToFile(queue<Rhd2000DataBlock> &dataQueue, std::ofstream &saveOut);
+    int getBoardMode() const;
+    int getCableDelay(BoardPort port) const;
+    void getCableDelay(vector<int> &delays) const;
 
 private:
-    okCFrontPanelx *dev;
+    okCFrontPanel *dev;
     AmplifierSampleRate sampleRate;
     int numDataStreams; // total number of data streams currently enabled
     int dataStreamEnabled[MAX_NUM_DATA_STREAMS]; // 0 (disabled) or 1 (enabled)
+    vector<int> cableDelay;
 
     // Buffer for reading bytes from USB interface
     unsigned char usbBuffer[USB_BUFFER_SIZE];
@@ -187,18 +196,23 @@ private:
         WireInDacSource6 = 0x1b,
         WireInDacSource7 = 0x1c,
         WireInDacSource8 = 0x1d,
-        WireInDacManual1 = 0x1e,
-        WireInDacManual2 = 0x1f,
+        WireInDacManual = 0x1e,
+        WireInMultiUse = 0x1f,
 
         TrigInDcmProg = 0x40,
         TrigInSpiStart = 0x41,
         TrigInRamWrite = 0x42,
+        TrigInDacThresh = 0x43,
+        TrigInDacHpf = 0x44,
+        TrigInExtFastSettle = 0x45,
+        TrigInExtDigOut = 0x46,
 
         WireOutNumWordsLsb = 0x20,
         WireOutNumWordsMsb = 0x21,
         WireOutSpiRunning = 0x22,
         WireOutTtlIn = 0x23,
         WireOutDataClkLocked = 0x24,
+        WireOutBoardMode = 0x25,
         WireOutBoardId = 0x3e,
         WireOutBoardVersion = 0x3f,
 

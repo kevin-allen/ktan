@@ -425,7 +425,7 @@ okDLLEXPORT long DLL_ENTRY okFrontPanel_ReadFromBlockPipeOut(okFrontPanel_HANDLE
 //------------------------------------------------------------------------
 // okCPLL22150 C++ wrapper class
 //------------------------------------------------------------------------
-class okCPLL22150x
+class okCPLL22150
 {
 public:
 	okPLL22150_HANDLE h;
@@ -445,7 +445,7 @@ private:
 	bool to_bool(Bool x);
 	Bool from_bool(bool x);
 public:
-	okCPLL22150x();
+	okCPLL22150();
 	void SetCrystalLoad(double capload);
 	void SetReference(double freq, bool extosc);
 	double GetReference();
@@ -471,7 +471,7 @@ public:
 //------------------------------------------------------------------------
 // okCPLL22150 C++ wrapper class
 //------------------------------------------------------------------------
-class okCPLL22393x
+class okCPLL22393
 {
 public:
 	okPLL22393_HANDLE h;
@@ -487,7 +487,7 @@ private:
 	bool to_bool(Bool x);
 	Bool from_bool(bool x);
 public:
-	okCPLL22393x();
+	okCPLL22393();
 	void SetCrystalLoad(double capload);
 	void SetReference(double freq);
 	double GetReference();
@@ -511,7 +511,7 @@ public:
 //------------------------------------------------------------------------
 // okCFrontPanel C++ wrapper class
 //------------------------------------------------------------------------
-class okCFrontPanelx
+class okCFrontPanel
 {
 public:
 	okFrontPanel_HANDLE h;
@@ -569,8 +569,8 @@ private:
 	bool to_bool(Bool x);
 	Bool from_bool(bool x);
 public:
-	okCFrontPanelx();
-	~okCFrontPanelx();
+	okCFrontPanel();
+	~okCFrontPanel();
 	int GetHostInterfaceWidth();
 	BoardModel GetBoardModel();
 	std::string GetBoardModelString(BoardModel m);
@@ -606,14 +606,14 @@ public:
 				void (*callback)(int, int, void *) = NULL, void *arg = NULL);
 	ErrorCode WriteI2C(const int addr, int length, unsigned char *data);
 	ErrorCode ReadI2C(const int addr, int length, unsigned char *data);
-	ErrorCode GetPLL22150Configuration(okCPLL22150x& pll);
-	ErrorCode SetPLL22150Configuration(okCPLL22150x& pll);
-	ErrorCode GetEepromPLL22150Configuration(okCPLL22150x& pll);
-	ErrorCode SetEepromPLL22150Configuration(okCPLL22150x& pll);
-	ErrorCode GetPLL22393Configuration(okCPLL22393x& pll);
-	ErrorCode SetPLL22393Configuration(okCPLL22393x& pll);
-	ErrorCode GetEepromPLL22393Configuration(okCPLL22393x& pll);
-	ErrorCode SetEepromPLL22393Configuration(okCPLL22393x& pll);
+	ErrorCode GetPLL22150Configuration(okCPLL22150& pll);
+	ErrorCode SetPLL22150Configuration(okCPLL22150& pll);
+	ErrorCode GetEepromPLL22150Configuration(okCPLL22150& pll);
+	ErrorCode SetEepromPLL22150Configuration(okCPLL22150& pll);
+	ErrorCode GetPLL22393Configuration(okCPLL22393& pll);
+	ErrorCode SetPLL22393Configuration(okCPLL22393& pll);
+	ErrorCode GetEepromPLL22393Configuration(okCPLL22393& pll);
+	ErrorCode SetEepromPLL22393Configuration(okCPLL22393& pll);
 	ErrorCode LoadDefaultPLLConfiguration();
 	bool IsHighSpeed();
 	bool IsFrontPanelEnabled();

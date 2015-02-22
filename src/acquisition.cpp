@@ -38,10 +38,19 @@ acquisition::acquisition(dataBuffer* dbuffer)
     chipId[i]=-1;
 
   evalBoardMode=0;  
-  evalBoard = new Rhd2000EvalBoard;
+ 
+
   openInterfaceBoard();// opel kelly 
-  
+
   scanPorts(); // intan boards
+    
+  evalBoard->enableDacHighpassFilter(false);
+  evalBoard->setDacHighpassFilter(250.0);
+
+
+  
+
+
 
   is_acquiring=false;
   inter_acquisition_sleep_ms=ACQUISITION_SLEEP_TIME_MS;
@@ -74,13 +83,18 @@ acquisition::~acquisition()
 
 void acquisition::openInterfaceBoard()
 {
-
+ 
   cerr << "entering acquisition::openInterfaceBoard()\n";
   // function called from the gui to set up the board
   // so that it is ready to record.
+
+  evalBoard = new Rhd2000EvalBoard;
   errorCode=0;
   // Open Opal Kelly XEM6010 board.
+  
+  cerr << "about to open OK\n";
   errorCode = evalBoard->open();
+  cerr << "errorCode: " << errorCode << "\n";
   if (errorCode < 1) 
     {
       if (errorCode == -1) 
@@ -96,6 +110,8 @@ void acquisition::openInterfaceBoard()
       evalBoard = 0;
       return;
     }
+
+
   
   // Load Rhythm FPGA configuration bitfile (provided by Intan Technologies).
   string bitfilename ="main.bit";
@@ -177,16 +193,12 @@ void acquisition::openInterfaceBoard()
   evalBoard->selectDacDataChannel(5, 0);
   evalBoard->selectDacDataChannel(6, 0);
   evalBoard->selectDacDataChannel(7, 0);
-  evalBoard->setDacManual(Rhd2000EvalBoard::DacManual1, 32768);
-  evalBoard->setDacManual(Rhd2000EvalBoard::DacManual2, 32768);
+  evalBoard->setDacManual(32768);
   evalBoard->setDacGain(0);
   evalBoard->setAudioNoiseSuppress(0);
   
   cerr << "leaving acquisition::openInterfaceBoard()\n";
  }
-
-
-
 // Scan SPI Ports A-D to identify all connected RHD2000 amplifier chips.
 void acquisition::scanPorts()
 {
@@ -713,8 +725,7 @@ void acquisition::findConnectedAmplifiers()
   changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz);
 
 
-
-  
+  // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*numAmplifierChannels];
   
 
@@ -724,8 +735,6 @@ void acquisition::findConnectedAmplifiers()
   delete[] sumGoodDelays;
   delete[] indexFirstGoodDelay;
   delete[] indexSecondGoodDelay;
-
-  
   cerr << "leaving acquisition::findConnectedAmplifiers()\n";
 }
 
@@ -859,7 +868,7 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   // Create a command list for the AuxCmd1 slot.  This command sequence will create a 250 Hz,
   // zero-amplitude sine wave (i.e., a flatline).  We will change this when we want to perform
   // impedance testing.
-  // commandSequenceLength = chipRegisters.createCommandListZcheckDac(commandList, 250.0, 0.0);
+  commandSequenceLength = chipRegisters.createCommandListZcheckDac(commandList, 250.0, 0.0);
   
   // Create a command list for the AuxCmd1 slot.  This command sequence will continuously
   // update Register 3, which controls the auxiliary digital output pin on each RHD2000 chip.
@@ -897,6 +906,9 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   actualUpperBandwidth = chipRegisters.setUpperBandwidth(desiredUpperBandwidth);
   chipRegisters.enableDsp(dspEnabled);
 
+  cerr << "actual Dsp cutoff frequency : " << actualDspCutoffFreq << '\n';
+  cerr << "actual lower bandwidth: " << actualLowerBandwidth << '\n';
+  cerr << "actual upper bandwidth: " << actualUpperBandwidth << '\n';
 
   
   
@@ -1020,7 +1032,7 @@ bool acquisition::stop_acquisition()
   evalBoard->flush();
 
   turnOffLED();
-  printLocalBuffer();
+  //  printLocalBuffer();
   cerr << "leaving  acquisition::stop_acquisition() \n";
   return true;
 }
@@ -1131,6 +1143,9 @@ int acquisition::move_to_dataBuffer()
 		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (32*numStreams) +   (channel*stream+channel) ] =
 		    (dataQueue.front().amplifierData[stream][channel][sample] - 32768);
 		  // multiply by 0.195 to get microvolt
+
+		  if(channel==0&&sample==0)
+		    cout << "Data read: " <<  (dataQueue.front().amplifierData[stream][channel][sample] - 32768) << '\n';
 		}
 	    }
 	  ++indexAmp;
@@ -1208,5 +1223,5 @@ void acquisition::printLocalBuffer()
     for(int channel=0; channel < numAmplifierChannels;channel++)
       cout << sample << " "
 	   << channel << " "
-	   << localBuffer[sample*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead+channel] << "\n";
+	   << localBuffer[sample*numAmplifierChannels + channel] << "\n";
 }

@@ -16,15 +16,17 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
   
 
-  // start and stop the data acquisition 
+  // start data acquisition on the board
   acq->start_acquisition();
+
+  // start a thread that will get the data comming from usb and put them into db
   pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
-  sleep(2);
+  sleep(1);
+
+  // stop acquisition, the acquisition thread will die
   acq->stop_acquisition();
   
-
   cerr << "leaving mainWindow::mainWindow()\n";
-
 }
 
 mainWindow::~mainWindow()
