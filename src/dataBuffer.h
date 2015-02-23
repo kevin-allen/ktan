@@ -1,7 +1,7 @@
 #ifndef DATABUFFER_H
 #define DATABUFFER_H
 
-#define MAX_BUFFER_LENGTH 2000000 // data_buffer 
+#define MAX_BUFFER_LENGTH 200000 // data_buffer 
 
 #include <string>
 #include <queue>
@@ -24,16 +24,22 @@ class dataBuffer
  public:
   dataBuffer();
   ~dataBuffer();
+  void setNumChannels(int numChannels);
+  int getNumChannels();
+  void addNewData(int numSamples,short int* data);
+  
+ private:
+  pthread_mutex_t data_buffer_mutex;
   unsigned long int number_samples_read; // total samples read since acq started
   unsigned long int oldest_sample_number; // oldest sample number currently in buffer
   int number_samples_in_buffer; // number of valid samples in buffer
   int max_number_samples_in_buffer; // number of valid samples in buffer when full
-  int index_lowest_sample;
+  int index_next_sample;
   int buffer_size;
   int number_channels;
   short int* buffer;// buffer to get data from comedi devices
- private:
-
+  int addAtEnd;
+  
 };
 
 

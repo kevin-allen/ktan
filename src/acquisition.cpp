@@ -1,3 +1,4 @@
+//#define DEBUG_ACQ
 #include "acquisition.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
@@ -9,7 +10,9 @@
 
 acquisition::acquisition(dataBuffer* dbuffer)
 {
-  cout << "entering acquisition::acquisition()\n";
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition()\n";
+#endif
 
   db=dbuffer; // get the address of the data buffer
   localBuffer=NULL;
@@ -70,16 +73,22 @@ acquisition::acquisition(dataBuffer* dbuffer)
   ************************************/
   evalBoardMode=0;  
   openInterfaceBoard();// opel kelly 
-  scanPorts(); // intan boards
+  findConnectedAmplifiers(); // intan boards
+
   //  evalBoard->enableDacHighpassFilter(false);
   //  evalBoard->setDacHighpassFilter(250.0);
   //  updateAuxDigOut();
-
   /************************************
   end of replacement
   **************************************/
-  settingAmp();
 
+
+  // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
+  // contains only one usb block read.
+  localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*numAmplifierChannels];
+  db->setNumChannels(numAmplifierChannels);
+
+  settingAmp();
 
   is_acquiring=false;
   inter_acquisition_sleep_ms=ACQUISITION_SLEEP_TIME_MS;
@@ -88,19 +97,23 @@ acquisition::acquisition(dataBuffer* dbuffer)
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
   
   
-  // // set some variables in the dataBuffer object
-  db->max_number_samples_in_buffer=db->buffer_size/numAmplifierChannels;
-  db->number_channels=numAmplifierChannels;
-
   
-  //runInterfaceBoard();
+#ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
+#endif
+
+
 
 }
 
 acquisition::~acquisition()
 {
+
+#ifdef DEBUG_ACQ
   cerr << "entering acquisition::~acquisition()\n";
+#endif
+
+
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
@@ -111,12 +124,16 @@ acquisition::~acquisition()
   if(localBuffer!=NULL)
     delete[] localBuffer;
   delete evalBoard;
+#ifdef DEBUG_ACQ
   cerr << "leaving acquisition::~acquisition()\n";
+#endif
 }
 
 void acquisition::openBoardBit()
 {
-  cerr << "acquisition::openBoardBit()\n";
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::openBoardBit()\n";
+#endif
 
   // Open Opal Kelly XEM6010 board.
   errorCode = evalBoard->open();
@@ -147,11 +164,21 @@ void acquisition::openBoardBit()
   // Initialize interface board.
   evalBoard->initialize();
   cerr << "board sampling rate: " << evalBoard->getSampleRate() << " Hz\n";
+  
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::openBoardBit()\n";
+#endif
+
+
+
 }
 
 void acquisition::settingAmp()
 {
-  cerr << "entering settingAmp()\n";
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::settingAmp()\n";
+#endif
+
 
   // Set up an RHD2000 register object using this sample rate.
   Rhd2000Registers *chipRegisters;
@@ -218,7 +245,11 @@ void acquisition::settingAmp()
   // that does not execute ADC calibration.
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA,Rhd2000EvalBoard::AuxCmd3, 0);
   delete dataBlock;
-  cerr << "leaving settingAmp()\n";
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::settingAmp()\n";
+#endif
+  
+
 }
 
 
@@ -229,8 +260,11 @@ void acquisition::settingAmp()
 void acquisition::openInterfaceBoard()
 {
  
-
+#ifdef DEBUG_ACQ
   cerr << "entering acquisition::openInterfaceBoard()\n";
+#endif
+
+
   // function called from the gui to set up the board
   // so that it is ready to record.
 
@@ -312,21 +346,17 @@ void acquisition::openInterfaceBoard()
   evalBoard->setCableLengthMeters(Rhd2000EvalBoard::PortC, 0.0);
   evalBoard->setCableLengthMeters(Rhd2000EvalBoard::PortD, 0.0);
 
+#ifdef DEBUG_ACQ
   cerr << "leaving acquisition::openInterfaceBoard()\n";
+#endif
+
  }
-// Scan SPI Ports A-D to identify all connected RHD2000 amplifier chips.
-void acquisition::scanPorts()
-{
-  cerr << "entering acquisition::scanPorts()\n";
-  // Scan SPI Ports.
-  findConnectedAmplifiers();
-  
-  cerr << "leaving acquisition::scanPorts()\n";
-}
 
 void acquisition::findConnectedAmplifiers()
 {
+#ifdef DEBUG_ACQ
   cerr << "entering acquisition::findConnectedAmplifiers()\n";
+#endif
   
   int delay, stream, id, i, channel, port, auxName, vddName;
   int register59Value;
@@ -653,8 +683,6 @@ void acquisition::findConnectedAmplifiers()
 
   changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz);
   
-  // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
-  localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*numAmplifierChannels];
   
 
   delete[] portIndex;
@@ -663,7 +691,9 @@ void acquisition::findConnectedAmplifiers()
   delete[] sumGoodDelays;
   delete[] indexFirstGoodDelay;
   delete[] indexSecondGoodDelay;
+#ifdef DEBUG_ACQ
   cerr << "leaving acquisition::findConnectedAmplifiers()\n";
+#endif
 }
 
 
@@ -672,8 +702,9 @@ void acquisition::findConnectedAmplifiers()
 // sequences that are used to set RAM registers on the RHD2000 chips.
 void acquisition::changeSampleRate(int sampleRateIndex)
 {
-  
-  cerr << "Entering MainWindow::changeSampleRate(" << sampleRateIndex << ")\n";
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::changeSampleRate()\n";
+#endif
   
   Rhd2000EvalBoard::AmplifierSampleRate sampleRate =
     Rhd2000EvalBoard::SampleRate1000Hz;
@@ -874,13 +905,20 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   // some impedance stuff
   //impedanceFreqValid = false;
   //updateImpedanceFrequency();
-    
-  cerr << "Leaving MainWindow::changeSampleRate(int sampleRateIndex)\n";
+  
+#ifdef DEBUG_ACQ
+  cerr << "leave acquisition::changeSampleRate()\n";
+#endif
+
 }
 
 
 int acquisition::deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value)
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::deviceId()\n";
+#endif
+
     bool intanChipPresent;
     // First, check ROM registers 32-36 to verify that they hold 'INTAN', and
     // the initial chip name ROM registers 24-26 that hold 'RHD'.
@@ -906,11 +944,18 @@ int acquisition::deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register
       register59Value = dataBlock->auxiliaryData[stream][2][23]; // Register 59
       return dataBlock->auxiliaryData[stream][2][19]; // chip ID (Register 63)
     }
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::deviceId()\n";
+#endif
+
 }
 
 bool acquisition::start_acquisition()
 {
-  cerr << "entering  acquisition::start_acquisition() \n";
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::start_acquisition()\n";
+#endif
+
 
   if(is_acquiring==true)
     return true;
@@ -931,7 +976,11 @@ bool acquisition::start_acquisition()
   evalBoard->setContinuousRunMode(true);
   evalBoard->run();
   is_acquiring = true;
-  cerr << "leaving  acquisition::start_acquisition() \n";
+
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::start_acquisition()\n";
+#endif
+
   return true;
 }
 
@@ -940,8 +989,10 @@ bool acquisition::start_acquisition()
 
 bool acquisition::stop_acquisition()
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::stop_acquisition()\n";
+#endif
  
-  cerr << "entering  acquisition::stop_acquisition() \n";
 
   if(is_acquiring==false)
     return true;
@@ -955,13 +1006,21 @@ bool acquisition::stop_acquisition()
   // Flush USB FIFO on XEM6010
   evalBoard->flush();
   turnOffLED();
-  //  printLocalBuffer();
-  cerr << "leaving  acquisition::stop_acquisition() \n";
+  
+  
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::stop_acquisition()\n";
+#endif
+
   return true;
 }
 
 void acquisition::checkFifoOK()
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::checkFifoOK()\n";
+#endif
+
   // Check the number of words stored in the Opal Kelly USB interface FIFO.
   wordsInFifo = evalBoard->numWordsInFifo();
   latency = 1000.0 * Rhd2000DataBlock::getSamplesPerDataBlock() * (wordsInFifo / dataBlockSize) * samplePeriod;
@@ -990,11 +1049,18 @@ void acquisition::checkFifoOK()
       cerr << "This happens when the host computer \n"
 	   << "cannot keep up with the data streaming from the interface board.\n";
     }
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::checkFifoOK()\n";
+#endif
 
 }
 
 void *acquisition::acquisition_thread_function(void)
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition_thread_function()\n";
+#endif
+
   ledIndex=0;
   while(is_acquiring==true)
     {
@@ -1006,6 +1072,7 @@ void *acquisition::acquisition_thread_function(void)
 	{
 	  // Read waveform data from USB interface board.
 	  move_to_dataBuffer();
+
 	  // play with led to impress visitors
 	  advanceLED();
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
@@ -1014,10 +1081,18 @@ void *acquisition::acquisition_thread_function(void)
       // take a break here instead of looping 100% of PCU
       nanosleep(&inter_acquisition_sleep_timespec,&req);
     }
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::acquisition_thread_function()\n";
+#endif
+
 }
 
 void acquisition::advanceLED()
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::advanceLED()\n";
+#endif
+
   // Advance LED display when we get new data
   ledArray[ledIndex] = 0;
   ledIndex++;
@@ -1025,15 +1100,27 @@ void acquisition::advanceLED()
     ledIndex = 0;
   ledArray[ledIndex] = 1;
   evalBoard->setLedDisplay(ledArray);
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::advanceLED()\n";
+#endif
+
 }
 void acquisition::turnOffLED()
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::turnOffLED()\n";
+#endif
+
   // Turn off LED.
   for (int i = 0; i < 8; ++i) 
     ledArray[i] = 0;
   ttlOut[15] = 0;
   evalBoard->setLedDisplay(ledArray);
   evalBoard->setTtlOut(ttlOut);
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::turnOffLED()\n";
+#endif
+
 }
 
 
@@ -1048,9 +1135,14 @@ void acquisition::turnOffLED()
 
 int acquisition::move_to_dataBuffer()
 {
-  
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::move_to_dataBuffer()\n";
+#endif
+
   int block, channel, stream, i, j, sample;
   int indexAmp = 0;
+
+  // copy from usb buffer ot localBuffer
   for (block = 0; block < numUsbBlocksToRead; ++block) 
     {
       for (sample = 0; sample < SAMPLES_PER_DATA_BLOCK; ++sample) 
@@ -1073,8 +1165,18 @@ int acquisition::move_to_dataBuffer()
       numBlocksLoaded++;
       dataQueue.pop();
     }
-  cerr << "leaving acquisition::move_to_dataBuffer\n";
+
+  // move data to the mainWindow data buffer
+  db->addNewData(numUsbBlocksToRead*SAMPLES_PER_DATA_BLOCK,localBuffer);
+
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::move_to_dataBuffer()\n";
+#endif
+
 }
+
+
+
 int acquisition::loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,
 				  int numBlocks,
 				  queue<Rhd2000DataBlock> &bufferQueue)
@@ -1137,19 +1239,13 @@ int acquisition::loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,
   return 0;
 }
 
-void acquisition::printLocalBuffer()
-{
-  for(int sample=0; sample < SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead;sample++)
-    for(int channel=0; channel < numAmplifierChannels;channel++)
-      cout << sample << " "
-	   << channel << " "
-	   << localBuffer[sample*numAmplifierChannels + channel] << "\n";
-}
-
-
 
 void acquisition::updateAuxDigOut()
 {
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::updateAuxDigOut()\n";
+#endif
+
   evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortA, auxDigOutEnabled[0]);
   evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortB, auxDigOutEnabled[1]);
   evalBoard->enableExternalDigOut(Rhd2000EvalBoard::PortC, auxDigOutEnabled[2]);
@@ -1158,4 +1254,8 @@ void acquisition::updateAuxDigOut()
   evalBoard->setExternalDigOutChannel(Rhd2000EvalBoard::PortB, auxDigOutChannel[1]);
   evalBoard->setExternalDigOutChannel(Rhd2000EvalBoard::PortC, auxDigOutChannel[2]);
   evalBoard->setExternalDigOutChannel(Rhd2000EvalBoard::PortD, auxDigOutChannel[3]);
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::updateAuxDigOut()\n";
+#endif
+
 }

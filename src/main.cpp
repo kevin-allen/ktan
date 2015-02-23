@@ -35,7 +35,7 @@ void openInterfaceBoard();
  be surrounded by 
  pthread_mutex_lock(&mutex1); and   pthread_mutex_unlock(&mutex1);
 */
-pthread_mutex_t acquisition_data_buffer;
+pthread_mutex_t data_buffer_mutex;
 
 
 int main (int argc, char *argv[])
@@ -135,6 +135,9 @@ int main (int argc, char *argv[])
       //openInterfaceBoard();
     }
   
+
+  pthread_mutex_init(&data_buffer_mutex, NULL);
+
 
   // to get a window derived from the builder's window see
   //https://developer.gnome.org/gtkmm-tutorial/3.2/sec-builder-using-derived-widgets.html.en

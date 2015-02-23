@@ -8,7 +8,6 @@
 #define REGISTER_59_MISO_A  53
 #define REGISTER_59_MISO_B  58
 #define SAMPLES_PER_DATA_BLOCK  60
-#define MAX_BUFFER_LENGTH 2000000 // data_buffer 
 #define ACQUISITION_SLEEP_TIME_MS 5 // if too long could lead to buffer overflow, we make it short to be up to data often
 
 #include <string>
@@ -72,6 +71,7 @@ class acquisition
   int* chipId;
   int evalBoardMode;
   unsigned long int numBlocksLoaded;
+  
 
   // for leds
   int ttlOut[16];
@@ -129,7 +129,6 @@ class acquisition
 
   // function to operate the intan evaluation board
   void openInterfaceBoard();
-  void scanPorts();
   void findConnectedAmplifiers();
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
