@@ -52,13 +52,27 @@ class acquisition
   double actualLowerBandwidth;
   bool dspEnabled;
 
+
+  void settingAmp();
+  void openBoardBit();
+  double desiredImpedanceFreq;
+  double actualImpedanceFreq;
+  bool impedanceFreqValid;
+
+  bool* manualDelayEnabled;
+  int* manualDelay;
+
+  bool* auxDigOutEnabled;
+  int* auxDigOutChannel;
+
   
   // digital to analog converters
   int numDacs;
   bool* dacEnabled;
   int* chipId;
   int evalBoardMode;
-  
+  unsigned long int numBlocksLoaded;
+
   // for leds
   int ttlOut[16];
   // variable changed with sampling rate
@@ -120,6 +134,7 @@ class acquisition
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
 
+  void updateAuxDigOut();
   // thread functions
   void *acquisition_thread_function(void);
   

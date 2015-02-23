@@ -19,7 +19,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   // start data acquisition on the board
   acq->start_acquisition();
 
-  // start a thread that will get the data comming from usb and put them into db
+  //start a thread that will get the data comming from usb and put them into db
   pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
   sleep(1);
 

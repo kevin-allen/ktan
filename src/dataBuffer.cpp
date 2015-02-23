@@ -5,7 +5,7 @@
 
 dataBuffer::dataBuffer()
 {
-  cout << "entering dataBuffer::dataBuffer()\n";
+  cerr << "entering dataBuffer::dataBuffer()\n";
 
   // Allocate memory for an internal buffer that can be used by other objects 
   buffer_size= MAX_BUFFER_LENGTH;
@@ -17,12 +17,12 @@ dataBuffer::dataBuffer()
   index_lowest_sample=0;
   number_channels=0;
   buffer = new short int [buffer_size];
-  cout << "leaving dataBuffer::dataBuffer()\n";
+  cerr << "leaving dataBuffer::dataBuffer()\n";
 }
 
 dataBuffer::~dataBuffer()
 {
   cerr << "entering dataBuffer::~dataBuffer()\n";
   delete[] buffer;
-  cout << "leaving  dataBuffer::~dataBuffer()\n";
+  cerr << "leaving  dataBuffer::~dataBuffer()\n";
 }
