@@ -1,8 +1,6 @@
 #ifndef DATABUFFER_H
 #define DATABUFFER_H
-
-#define MAX_BUFFER_LENGTH 200000 // data_buffer 
-
+#define MAX_BUFFER_LENGTH 2000000 // data_buffer 
 #include <string>
 #include <queue>
 #include "timeKeeper.h"
@@ -27,6 +25,7 @@ class dataBuffer
   void setNumChannels(int numChannels);
   int getNumChannels();
   void addNewData(int numSamples,short int* data);
+  int getNewData(int firstSample,short int* data, int maxSamples, int numberChannels, unsigned int* channelList);
   
  private:
   pthread_mutex_t data_buffer_mutex;

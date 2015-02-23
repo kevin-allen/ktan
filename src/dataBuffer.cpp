@@ -135,6 +135,37 @@ void dataBuffer::addNewData(int numSamples,short int* data)
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::addNewData(int, short int* )\n";
 #endif
+}
 
 
+
+int dataBuffer::getNewData(int firstSample, short int* data, int maxSamples,int numberChannels, unsigned int* channelList)
+{ // returns the number of new samples copied in data
+  
+  // check if firstSample is in the buffer
+  if(firstSample>number_samples_read)
+    {
+      cerr << "dataBuffer::getNewData(), firstSample: " << firstSample << " is larger than number of samples read: " << number_samples_read << '\n';
+      return -1;
+    }
+  for(int i = 0; i < numberChannels;i++)
+    {
+      if(channelList[i]>=number_channels)
+	{
+	  cerr << "dataBuffer::getNewData(), channel " << i << " of the channelList is out of range: " << channelList[i] << "\n";
+	  cerr << "it should be between 0 and " << number_channels << '\n';
+	  return -1;
+	}
+    }
+  if(firstSample<number_samples_read-max_number_samples_in_buffer)
+    {
+      cerr << "dataBuffer::getNewData(), firstSample: " << firstSample << " is smaller than the first sample in the buffer. So some data are missing\n";
+      return -1;
+    }
+
+  
+
+  
+
+  
 }
