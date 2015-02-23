@@ -38,6 +38,9 @@ class dataBuffer
   int number_channels;
   short int* buffer;// buffer to get data from comedi devices
   int addAtEnd;
+  int samplestoCopy;
+  int index_copy_start;
+  int copyAtEnd;
   
 };
 
