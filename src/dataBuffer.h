@@ -16,6 +16,10 @@ for efficiency new data will overwrite the older ones
 in a wrap around manner.
 
 This is more work to code but is more efficient
+
+All modification to buffer occurs under a mutex lock so that
+different thread can operate in parallel without racing conditions
+or other problems
 ***************************************************************/ 
 class dataBuffer
 {
@@ -25,7 +29,7 @@ class dataBuffer
   void setNumChannels(int numChannels);
   int getNumChannels();
   void addNewData(int numSamples,short int* data);
-  int getNewData(int firstSample,short int* data, int maxSamples, int numberChannels, unsigned int* channelList);
+  int getNewData(int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
   
  private:
   pthread_mutex_t data_buffer_mutex;
@@ -38,7 +42,7 @@ class dataBuffer
   int number_channels;
   short int* buffer;// buffer to get data from comedi devices
   int addAtEnd;
-  int samplestoCopy;
+  int samplesToCopy;
   int index_copy_start;
   int copyAtEnd;
   

@@ -140,28 +140,35 @@ void dataBuffer::addNewData(int numSamples,short int* data)
 
 
 
-int dataBuffer::getNewData(int firstSample, short int* data, int maxSamples,int numberChannels, unsigned int* channelList)
+int dataBuffer::getNewData(int firstSample, short int* data, int maxSamples,int numChannels, unsigned int* channelList)
 { // copy data from the buffer to data
   // returns the number of new samples copied in data
   
 #ifdef DEBUG_BUF
   cerr << "entering dataBuffer::getNewData(int, short int* )\n";
+  cerr << "firstSample: " << firstSample << " maxSamples: " << maxSamples << " numChannels: " << numChannels << '\n';
+  cerr << "number_samples_read: " << number_samples_read << " index_next_sample:" << index_next_sample <<  " max_number_samples_in_buffer:" << max_number_samples_in_buffer << '\n'; 
 #endif
+  if(number_samples_read==0)
+    { // buffer is empty
+      return 0;
+    }
   // check if firstSample is in the buffer
   if(firstSample>number_samples_read)
     {
       cerr << "dataBuffer::getNewData(), firstSample: " << firstSample << " is larger than number of samples read: " << number_samples_read << '\n';
       return 0;
     }
-  if(firstSample<number_samples_read-max_number_samples_in_buffer)
-    {
-      cerr << "dataBuffer::getNewData(), firstSample: " << firstSample << " is smaller than the first sample in the buffer. So some data are missing\n";
-      return -1;
-    }
+  if(number_samples_read>max_number_samples_in_buffer)
+    if(firstSample<number_samples_read-max_number_samples_in_buffer)
+      {
+	cerr << "dataBuffer::getNewData(), num_samples_read:" << number_samples_read << " firstSample: " << firstSample << " is smaller than the first sample in the buffer. So some data are missing\n";
+	return -1;
+      }
 
 
   // check if channels are all present in the buffer
-  for(int i = 0; i < numberChannels;i++)
+  for(int i = 0; i < numChannels;i++)
     {
       if(channelList[i]>=number_channels)
 	{
@@ -171,15 +178,23 @@ int dataBuffer::getNewData(int firstSample, short int* data, int maxSamples,int 
 	}
     }
 
+  // prevent changing the buffer while working with it
+  pthread_mutex_lock(&data_buffer_mutex);
+
   // number of samples to copy
   samplesToCopy=number_samples_read-firstSample;
   if(samplesToCopy>maxSamples)
     samplesToCopy=maxSamples;
 
   // find index first sample, last sample read
-  index_copy_start=(index_next_sample-1)-samplesToCopy;
+  index_copy_start=(index_next_sample)-samplesToCopy;
   if(index_copy_start<0)
-    index_copy_start=max_number_samples_in_buffer-index_copy_index;
+    index_copy_start=max_number_samples_in_buffer+index_copy_start;
+
+
+#ifdef DEBUG_BUF
+  cerr << "number_samples_read: " << number_samples_read << " samplesToCopy: " << samplesToCopy << " index_copy_start: " << index_copy_start << '\n';
+#endif
 
 
   // copy the data
@@ -202,8 +217,9 @@ int dataBuffer::getNewData(int firstSample, short int* data, int maxSamples,int 
 	  data[(sample*numChannels)+channel]=buffer[(sample-copyAtEnd)*number_channels+channelList[channel]];
     }
   
+  pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::getNewData(int, short int* )\n";
 #endif
-  return samplesToCopy
+  return samplesToCopy;
 }
