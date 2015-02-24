@@ -1,32 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk+" version="2.16"/>
-  <!-- interface-naming-policy toplevel-contextual -->
+  <!-- interface-requires gtk+ 3.0 -->
   <object class="GtkAboutDialog" id="about_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
     <property name="type_hint">normal</property>
     <property name="program_name">ktan</property>
     <property name="version">0.1</property>
-    <property name="copyright" translatable="yes">Copyright @ 2013 Kevin Allen</property>
-    <property name="comments" translatable="yes">Data acquisition program for GNU/linux operating systems
-
-</property>
-    <property name="license" translatable="yes">ktan is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
-
-ktan is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with gacq; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</property>
-    <property name="authors">Kevin Allen</property>
+    <property name="copyright" translatable="yes">Copyright @ 2015 Kevin Allen</property>
+    <property name="comments" translatable="yes">Oscilloscope and recording program for Intan Technologies evaluation board</property>
     <property name="wrap_license">True</property>
     <signal name="delete-event" handler="on_about_dialog_delete_event" after="yes" swapped="no"/>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="dialog-vbox1">
+      <object class="GtkBox" id="dialog-vbox1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
-          <object class="GtkHButtonBox" id="dialog-action_area1">
+          <object class="GtkButtonBox" id="dialog-action_area1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
@@ -52,11 +43,11 @@ You should have received a copy of the GNU General Public License along with gac
     <property name="type_hint">dialog</property>
     <signal name="delete-event" handler="on_acquisition_dialog_delete_event" after="yes" swapped="no"/>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="dialog-vbox4">
+      <object class="GtkBox" id="dialog-vbox4">
         <property name="can_focus">False</property>
         <property name="spacing">5</property>
         <child internal-child="action_area">
-          <object class="GtkHButtonBox" id="dialog-action_area4">
+          <object class="GtkButtonBox" id="dialog-action_area4">
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
@@ -65,7 +56,6 @@ You should have received a copy of the GNU General Public License along with gac
             <child>
               <object class="GtkButton" id="ok_acquisition_button">
                 <property name="label">gtk-ok</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -400,11 +390,11 @@ You should have received a copy of the GNU General Public License along with gac
     <property name="type_hint">dialog</property>
     <signal name="delete-event" handler="on_oscilloscope_dialog_delete_event" after="yes" swapped="no"/>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="dialog-vbox6">
+      <object class="GtkBox" id="dialog-vbox6">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
-          <object class="GtkHButtonBox" id="dialog-action_area6">
+          <object class="GtkButtonBox" id="dialog-action_area6">
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
@@ -413,7 +403,6 @@ You should have received a copy of the GNU General Public License along with gac
             <child>
               <object class="GtkButton" id="ok_oscilloscope_button">
                 <property name="label">gtk-ok</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -462,8 +451,6 @@ You should have received a copy of the GNU General Public License along with gac
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
-                    <property name="primary_icon_sensitive">True</property>
-                    <property name="secondary_icon_sensitive">True</property>
                     <property name="adjustment">osc_group_preferences_adjustment</property>
                     <signal name="value-changed" handler="on_osc_group_preference_spinbutton_value_changed" after="yes" swapped="no"/>
                   </object>
@@ -502,6 +489,9 @@ You should have received a copy of the GNU General Public License along with gac
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="reorderable">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection" id="treeview-selection1"/>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -517,7 +507,6 @@ You should have received a copy of the GNU General Public License along with gac
                 <property name="can_focus">False</property>
                 <child>
                   <object class="GtkToolButton" id="osc_add_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">previous</property>
@@ -532,7 +521,6 @@ You should have received a copy of the GNU General Public License along with gac
                 </child>
                 <child>
                   <object class="GtkToolButton" id="osc_remove_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">previous</property>
@@ -573,6 +561,9 @@ You should have received a copy of the GNU General Public License along with gac
                   <object class="GtkTreeView" id="osc_all_channels_treeview">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection" id="treeview-selection2"/>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -601,17 +592,16 @@ You should have received a copy of the GNU General Public License along with gac
     <property name="title" translatable="yes">overwrite warning</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="overwrite_dialog-vbox2">
+      <object class="GtkBox" id="overwrite_dialog-vbox2">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
-          <object class="GtkHButtonBox" id="dialog-action_area2">
+          <object class="GtkButtonBox" id="dialog-action_area2">
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
               <object class="GtkButton" id="yes_button">
                 <property name="label" translatable="yes">yes</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -625,7 +615,6 @@ You should have received a copy of the GNU General Public License along with gac
             <child>
               <object class="GtkButton" id="no_button">
                 <property name="label" translatable="yes">no</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -673,11 +662,11 @@ Do you want to overwrite it?</property>
     <property name="type_hint">dialog</property>
     <signal name="delete-event" handler="on_recording_dialog_delete_event" after="yes" swapped="no"/>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="dialog-vbox7">
+      <object class="GtkBox" id="dialog-vbox7">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
-          <object class="GtkHButtonBox" id="dialog-action_area7">
+          <object class="GtkButtonBox" id="dialog-action_area7">
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
@@ -686,7 +675,6 @@ Do you want to overwrite it?</property>
             <child>
               <object class="GtkButton" id="ok_recording_button">
                 <property name="label">gtk-ok</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -722,6 +710,9 @@ Do you want to overwrite it?</property>
                     <property name="height_request">400</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection" id="treeview-selection3"/>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -737,7 +728,6 @@ Do you want to overwrite it?</property>
                 <property name="can_focus">False</property>
                 <child>
                   <object class="GtkToolButton" id="add_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">previous</property>
@@ -752,7 +742,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="remove_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">previous</property>
@@ -803,7 +792,6 @@ Do you want to overwrite it?</property>
                 <child>
                   <object class="GtkButton" id="directory_button">
                     <property name="label">gtk-open</property>
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
@@ -891,7 +879,6 @@ Do you want to overwrite it?</property>
             <property name="can_focus">False</property>
             <child>
               <object class="GtkMenuItem" id="file_menuitem">
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">_File</property>
@@ -909,7 +896,6 @@ Do you want to overwrite it?</property>
                     <child>
                       <object class="GtkImageMenuItem" id="quit_menuitem">
                         <property name="label">gtk-quit</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
@@ -923,7 +909,6 @@ Do you want to overwrite it?</property>
             </child>
             <child>
               <object class="GtkMenuItem" id="edit_menuitem">
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">_Edit</property>
@@ -934,7 +919,6 @@ Do you want to overwrite it?</property>
                     <property name="can_focus">False</property>
                     <child>
                       <object class="GtkMenuItem" id="acquisition_menuitem">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Acquisition preferences</property>
@@ -944,7 +928,6 @@ Do you want to overwrite it?</property>
                     </child>
                     <child>
                       <object class="GtkMenuItem" id="recording_menuitem">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Recording preferences</property>
@@ -954,7 +937,6 @@ Do you want to overwrite it?</property>
                     </child>
                     <child>
                       <object class="GtkMenuItem" id="oscilloscope_menuitem">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Oscilloscope preferences</property>
@@ -968,7 +950,6 @@ Do you want to overwrite it?</property>
             </child>
             <child>
               <object class="GtkMenuItem" id="help_menuitem">
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">_Help</property>
@@ -980,7 +961,6 @@ Do you want to overwrite it?</property>
                     <child>
                       <object class="GtkImageMenuItem" id="about_menuitem">
                         <property name="label">gtk-about</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
@@ -1022,7 +1002,6 @@ Do you want to overwrite it?</property>
                 <property name="show_arrow">False</property>
                 <child>
                   <object class="GtkToolButton" id="rewind_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">rewind</property>
@@ -1037,7 +1016,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToggleToolButton" id="play_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">play</property>
@@ -1052,7 +1030,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="forward_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">forward</property>
@@ -1067,7 +1044,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToggleToolButton" id="record_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">record</property>
@@ -1082,7 +1058,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="gain_increase_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">gain increase toolbutton</property>
@@ -1097,7 +1072,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="gain_decrease_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">gain decrease toolbutton</property>
@@ -1112,7 +1086,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="time_increase_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">time increase toolbutton</property>
@@ -1127,7 +1100,6 @@ Do you want to overwrite it?</property>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="time_decrease_toolbutton">
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">time decrease toolbutton</property>
@@ -1166,8 +1138,6 @@ Do you want to overwrite it?</property>
                 <property name="invisible_char">●</property>
                 <property name="primary_icon_activatable">False</property>
                 <property name="secondary_icon_activatable">False</property>
-                <property name="primary_icon_sensitive">True</property>
-                <property name="secondary_icon_sensitive">True</property>
                 <property name="adjustment">osc_group_adjustment</property>
                 <signal name="value-changed" handler="on_group_spinbutton_value_changed" after="yes" swapped="no"/>
               </object>
@@ -1199,8 +1169,6 @@ Do you want to overwrite it?</property>
                 <property name="invisible_char_set">True</property>
                 <property name="primary_icon_activatable">False</property>
                 <property name="secondary_icon_activatable">False</property>
-                <property name="primary_icon_sensitive">True</property>
-                <property name="secondary_icon_sensitive">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -1231,8 +1199,6 @@ Do you want to overwrite it?</property>
                 <property name="invisible_char_set">True</property>
                 <property name="primary_icon_activatable">False</property>
                 <property name="secondary_icon_activatable">False</property>
-                <property name="primary_icon_sensitive">True</property>
-                <property name="secondary_icon_sensitive">True</property>
                 <property name="adjustment">trial_no_adjustment</property>
                 <property name="climb_rate">1</property>
                 <property name="numeric">True</property>
