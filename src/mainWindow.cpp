@@ -20,8 +20,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
   cerr << "entering mainWindow::mainWindow()\n";
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
-  acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
-  rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
+  //  acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
+  //rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
 
   // get the widget from builder
   builder->get_widget("play_toolbutton",play_toolbutton);
@@ -82,8 +82,8 @@ mainWindow::~mainWindow()
   cerr << "entering mainWindow::~mainWindow()\n";
 #endif
 
-  delete acq;
-  delete rec;
+  // delete acq;
+  // delete rec;
   delete db;
 
 #ifdef DEBUG_WIN
@@ -275,6 +275,10 @@ void mainWindow::build_model_recording_treeview()
   Gtk::TreeView::Column* pColumn = recording_treeview->get_column(2);
   pColumn->set_clickable(true);
 
+
+  // http://www.pygtk.org/pygtk2tutorial/sec-TreeSelections.html
+  Glib::RefPtr<Gtk::TreeSelection> ts = recording_treeview->get_selection();
+  ts->set_mode(Gtk::SELECTION_MULTIPLE);
   
   m_refRecTreeModel = Gtk::ListStore::create(m_RecordingColumns);
   recording_treeview->set_model(m_refRecTreeModel);

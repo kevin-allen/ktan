@@ -28,7 +28,7 @@ class acquisition
 
   bool start_acquisition();
   bool stop_acquisition();
-
+  bool get_is_acquiring();
   static void *acquisition_thread_helper(void *context) // helper function to start the new thread
   {
     ((acquisition *)context)->acquisition_thread_function();
