@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdlib.h> 
 #include <stdint.h>
+#include <stdio.h>
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
@@ -33,7 +34,11 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("time_decrease_toolbutton",time_decrease_toolbutton);
   builder->get_widget("about_menuitem",about_menuitem);
   builder->get_widget("about_dialog",about_dialog);
-  
+  builder->get_widget("recording_dialog",recording_dialog);
+  builder->get_widget("quit_menuitem",quit_menuitem);
+  builder->get_widget("oscilloscope_menuitem",oscilloscope_menuitem);
+  builder->get_widget("recording_menuitem",recording_menuitem);
+  builder->get_widget("recording_treeview",recording_treeview);
   
   // connect signals to functions
   play_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_play_toolbutton_toggled));
@@ -45,6 +50,9 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   time_increase_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_time_increase_toolbutton_clicked));
   time_decrease_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_time_decrease_toolbutton_clicked));
   about_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_about_menuitem_activate));
+  quit_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_quit_menuitem_activate));
+  oscilloscope_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_oscilloscope_menuitem_activate));
+  recording_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_recording_menuitem_activate));
 
 
   // // start data acquisition on the board
@@ -59,7 +67,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   // acq->stop_acquisition();
   // rec->stop_recording();
 
-
+  build_model_recording_treeview();
+  
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::mainWindow()\n";
 #endif
@@ -74,9 +83,8 @@ mainWindow::~mainWindow()
 #endif
 
   delete acq;
-  delete db;
   delete rec;
-
+  delete db;
 
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::~mainWindow()\n";
@@ -171,7 +179,6 @@ void mainWindow::on_about_menuitem_activate()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_about_menuitem_activate()\n";
 #endif
-
   int response;
   response=about_dialog->run();
   switch(response)
@@ -187,9 +194,103 @@ void mainWindow::on_about_menuitem_activate()
 	break;
       }
     }
-
-
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_about_menu_item_activate()\n";
+#endif
+}
+
+
+void mainWindow::on_quit_menuitem_activate()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::quit_menuitem_activate()\n";
+#endif
+  hide();
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::quit_menuitem_activate()\n";
+#endif
+}
+
+void mainWindow::on_oscilloscope_menuitem_activate()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::oscilloscope_menuitem_activate()\n";
+#endif
+  int response;
+  response=oscilloscope_dialog->run();
+  switch(response)
+    {
+    case (GTK_RESPONSE_CANCEL):
+      {
+	oscilloscope_dialog->hide();
+	break;
+      }
+    default:
+      {
+	oscilloscope_dialog->hide();
+	break;
+      }
+    }
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::oscilloscope_menuitem_activate()\n";
+#endif
+}
+
+void mainWindow::on_recording_menuitem_activate()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::recording_menuitem_activate()\n";
+#endif
+  int response;
+  response=recording_dialog->run();
+  switch(response)
+    {
+    case (GTK_RESPONSE_CANCEL):
+      {
+	recording_dialog->hide();
+	break;
+      }
+    default:
+      {
+	recording_dialog->hide();
+	break;
+      }
+    }
+
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::recording_menuitem_activate()\n";
+#endif
+}
+void mainWindow::build_model_recording_treeview()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::build_model_recording_treeview()\n";
+#endif
+  //Add the TreeView's view columns:
+  //This number will be shown with the default numeric formatting.
+  recording_treeview->append_column("ID", m_RecordingColumns.m_col_id);
+  recording_treeview->append_column("Name", m_RecordingColumns.m_col_name);
+  recording_treeview->append_column("Select", m_RecordingColumns.m_col_selected);
+  
+  Gtk::TreeView::Column* pColumn = recording_treeview->get_column(2);
+  pColumn->set_clickable(true);
+
+  
+  m_refRecTreeModel = Gtk::ListStore::create(m_RecordingColumns);
+  recording_treeview->set_model(m_refRecTreeModel);
+
+  Gtk::TreeModel::Row row;
+  for(int i = 0; i < 32; i++)
+    { 
+      row = *(m_refRecTreeModel->append());
+      std::stringstream ss;
+      ss << i;
+      row[m_RecordingColumns.m_col_id] = i;
+      row[m_RecordingColumns.m_col_name] = ss.str();
+      row[m_RecordingColumns.m_col_selected] = true;
+    }
+  
+#ifdef DEBUG_WIN
+  cerr << "leave mainWindow::build_model_recording_treeview()\n";
 #endif
 }

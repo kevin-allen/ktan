@@ -36,8 +36,17 @@ class mainWindow: public Gtk::Window
   Gtk::ToolButton*  time_increase_toolbutton;
   Gtk::ToolButton*  time_decrease_toolbutton;
 
-  Gtk::MenuItem*  about_menuitem;
+  Gtk::MenuItem* about_menuitem;
+  Gtk::MenuItem* quit_menuitem;
+  Gtk::MenuItem* oscilloscope_menuitem;
+  Gtk::MenuItem* recording_menuitem;
+
+
   Gtk::AboutDialog* about_dialog;
+  Gtk::Dialog* recording_dialog;
+  Gtk::Dialog* oscilloscope_dialog;
+
+  Gtk::TreeView* recording_treeview;
 
 
 
@@ -91,6 +100,20 @@ class mainWindow: public Gtk::Window
 
 
 
+//Tree model columns:
+  class ModelRecordingColumns : public Gtk::TreeModel::ColumnRecord
+  {
+  public:
+
+    ModelRecordingColumns()
+    { add(m_col_id); add(m_col_name); add(m_col_selected);}
+
+    Gtk::TreeModelColumn<unsigned int> m_col_id;
+    Gtk::TreeModelColumn<Glib::ustring> m_col_name;
+    Gtk::TreeModelColumn<bool> m_col_selected;
+  };
+  ModelRecordingColumns m_RecordingColumns;
+  Glib::RefPtr<Gtk::ListStore> m_refRecTreeModel;
 
 
   // callback functions
@@ -103,7 +126,12 @@ class mainWindow: public Gtk::Window
   void on_time_increase_toolbutton_clicked();
   void on_time_decrease_toolbutton_clicked();
   void on_about_menuitem_activate();
-
+  void on_quit_menuitem_activate();
+  void on_oscilloscope_menuitem_activate();
+  void on_recording_menuitem_activate();
+  
+  // 
+  void build_model_recording_treeview();
 
 };
 
