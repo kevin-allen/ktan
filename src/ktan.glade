@@ -359,6 +359,12 @@
     <property name="can_focus">False</property>
     <property name="pixbuf">../data/gtk_zoom_in_volt.png</property>
   </object>
+  <object class="GtkAdjustment" id="max_recording_time_adjustment">
+    <property name="lower">1</property>
+    <property name="upper">100</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkAdjustment" id="number_cards_adjustment">
     <property name="lower">1</property>
     <property name="upper">2</property>
@@ -584,75 +590,6 @@
     </child>
     <action-widgets>
       <action-widget response="0">ok_oscilloscope_button</action-widget>
-    </action-widgets>
-  </object>
-  <object class="GtkDialog" id="overwrite_dialog">
-    <property name="can_focus">False</property>
-    <property name="border_width">5</property>
-    <property name="title" translatable="yes">overwrite warning</property>
-    <property name="type_hint">dialog</property>
-    <child internal-child="vbox">
-      <object class="GtkBox" id="overwrite_dialog-vbox2">
-        <property name="can_focus">False</property>
-        <property name="spacing">2</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox" id="dialog-action_area2">
-            <property name="can_focus">False</property>
-            <property name="layout_style">end</property>
-            <child>
-              <object class="GtkButton" id="yes_button">
-                <property name="label" translatable="yes">yes</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="no_button">
-                <property name="label" translatable="yes">no</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="pack_type">end</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="overwrite_label">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="label" translatable="yes">File x already exists.
-
-Do you want to overwrite it?</property>
-            <property name="wrap">True</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    <action-widgets>
-      <action-widget response="0">yes_button</action-widget>
-      <action-widget response="0">no_button</action-widget>
     </action-widgets>
   </object>
   <object class="GtkDialog" id="recording_dialog">
@@ -1127,6 +1064,7 @@ Do you want to overwrite it?</property>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
+                <property name="padding">5</property>
                 <property name="position">1</property>
               </packing>
             </child>
@@ -1147,24 +1085,25 @@ Do you want to overwrite it?</property>
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="file_name_label">
+              <object class="GtkLabel" id="file_base_label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">file name: </property>
+                <property name="label" translatable="yes">file base: </property>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="padding">9</property>
+                <property name="padding">5</property>
                 <property name="position">3</property>
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="file_name_entry">
+              <object class="GtkEntry" id="file_base_entry">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="invisible_char">●</property>
-                <property name="text" translatable="yes">subject-date</property>
+                <property name="text" translatable="yes">subject</property>
+                <property name="shadow_type">none</property>
                 <property name="invisible_char_set">True</property>
                 <property name="primary_icon_activatable">False</property>
                 <property name="secondary_icon_activatable">False</property>
@@ -1209,10 +1148,33 @@ Do you want to overwrite it?</property>
               </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel" id="max_recording_time_label">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">max recording time (min):</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="padding">5</property>
+                <property name="position">7</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkSpinButton" id="max_recording_time_spinbutton">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="max_length">2</property>
+                <property name="invisible_char">●</property>
+                <property name="adjustment">max_recording_time_adjustment</property>
+                <property name="climb_rate">1</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">8</property>
+              </packing>
             </child>
           </object>
           <packing>

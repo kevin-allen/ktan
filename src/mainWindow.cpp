@@ -9,6 +9,7 @@
 #include <stdlib.h> 
 #include <stdint.h>
 #include <stdio.h>
+#include <glibmm.h>
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
@@ -44,7 +45,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("recording_treeview",recording_treeview);
   builder->get_widget("statusbar",statusbar);
   builder->get_widget("trial_spinbutton",trial_spinbutton);
-  builder->get_widget("file_name_entry",file_name_entry);
+  builder->get_widget("file_base_entry",file_base_entry);
+  builder->get_widget("max_recording_time_spinbutton",max_recording_time_spinbutton);
 
   
   // connect signals to functions
@@ -64,6 +66,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   oscilloscope_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_oscilloscope_menuitem_activate));
   recording_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_recording_menuitem_activate));
 
+ 
 
   // // start data acquisition on the board
   //  acq->start_acquisition();
@@ -77,10 +80,17 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   //acq->stop_acquisition();
   //rec->stop_recording();
 
-  // set date in file name
-  set_date_string();
-  file_name_entry->set_text("xx999-"+date_string);
+  file_base_entry->set_text(rec->get_file_base());
+  trial_spinbutton->set_value(rec->get_file_index());
   
+  // for timer
+  tslot = sigc::mem_fun(*this, &mainWindow::on_statusbar_timeout);
+
+
+
+  // set max recording time
+  max_recording_time_spinbutton->set_value(20);
+
   build_model_recording_treeview();
   
 #ifdef DEBUG_WIN
@@ -88,25 +98,6 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 #endif
 }
 
-void mainWindow::set_date_string()
-{
-  std::stringstream syear;
-  std::stringstream smonth;
-  std::stringstream sday;
-  time_t t = time(0);   // get time now
-  struct tm * now = localtime( & t );
-  syear << (now->tm_year+1900);
-  if((now->tm_mon+1)<10)
-    smonth << "0" << (now->tm_mon+1);
-  else
-    smonth << (now->tm_mon+1);
-  if(now->tm_mday<10)
-    sday << "0" << now->tm_mday;
-  else
-    sday << now->tm_mday;
-  date_string=sday.str()+smonth.str()+syear.str();
-
-}
 mainWindow::~mainWindow()
 {
 #ifdef DEBUG_WIN
@@ -125,6 +116,7 @@ mainWindow::~mainWindow()
 }
 
 
+
 void mainWindow::on_play_toolbutton_toggled()
 {
 #ifdef DEBUG_WIN
@@ -141,8 +133,6 @@ void mainWindow::on_record_toolbutton_toggled()
   cerr << "entering mainWindow::on_record_toolbutton_toggled()\n";
 #endif
 
-  unsigned int m_context_id;
-  m_context_id = statusbar->get_context_id("Statusbar example");
 
   if(rec->get_is_recording()==true)
     {
@@ -150,15 +140,23 @@ void mainWindow::on_record_toolbutton_toggled()
       cerr << "recording is running, stop it\n";
       rec->stop_recording();
       acq->stop_acquisition();
+      file_base_entry->set_text(rec->get_file_base());
+      trial_spinbutton->set_value(rec->get_file_index());
+
+      unsigned int m_context_id;
+      m_context_id = statusbar->get_context_id("Statusbar example");
       statusbar->pop(m_context_id);
-      trial_spinbutton->set_value(trial_spinbutton->get_value()+1);
+      statusbar_timeout_connection.disconnect();
     }
   else 
     {
       // recording not running, start it
       db->resetData();
       cerr << "recording not running, start it\n";
-      rec->set_file_name(get_file_name_from_window().c_str());
+      rec->set_max_recording_time(max_recording_time_spinbutton->get_value());
+      rec->set_file_base(file_base_entry->get_text());
+      rec->set_file_index(trial_spinbutton->get_value());
+      
       if(check_file_overwrite()==false)
 	{
 	  cerr << "check file overwrite returned false, abort recording\n";
@@ -181,11 +179,9 @@ void mainWindow::on_record_toolbutton_toggled()
       cerr << "start recording\n";
       rec->start_recording();
       pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
+      statusbar_timeout_connection = Glib::signal_timeout().connect(tslot,1000); 
 
-      std::stringstream ss;
-      ss << "recording " << rec->get_number_channels_save() << " channels to " << rec->get_file_name();
-      statusbar->pop(m_context_id);
-      statusbar->push(ss.str(),m_context_id);
+      
     }
 
 #ifdef DEBUG_WIN
@@ -193,11 +189,27 @@ void mainWindow::on_record_toolbutton_toggled()
 #endif
 }
 
+bool mainWindow::on_statusbar_timeout()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_statusbar_timeout()\n";
+#endif
+  unsigned int m_context_id;
+  m_context_id = statusbar->get_context_id("Statusbar example");
+  std::stringstream ss;
+  ss << "recording " << rec->get_number_channels_save() << " channels to " << rec->get_file_name() << " time: " << rec->get_recording_duration_sec() << " sec";
+  statusbar->pop(m_context_id);
+  statusbar->push(ss.str(),m_context_id);
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::on_statusbar_timeout()\n";
+#endif
+  return true;
+}
+
 
 bool mainWindow::check_file_overwrite() // abort when returned false
 {
-  string fd =g_strdup_printf("%s%s",rec->get_directory_name(),rec->get_file_name());
-
+  string fd =rec->get_file_name();
   struct stat st;
   if(stat(fd.c_str(),&st)== 0)
     {
@@ -233,16 +245,6 @@ bool mainWindow::check_file_overwrite() // abort when returned false
   return true;
 }
 
-string mainWindow::get_file_name_from_window()
-{
-  string file_name;
-  string directory;
-  if(trial_spinbutton->get_value()<10)
-    file_name=file_name_entry->get_text() + "_0" + trial_spinbutton->get_text()+".dat";
-  else
-    file_name=file_name_entry->get_text() + "_" + trial_spinbutton->get_text()+".dat";
-  return file_name;
-}
 
 void mainWindow::on_rewind_toolbutton_clicked()
 {
@@ -480,7 +482,7 @@ void mainWindow::update_recording_channels()
 #endif
   if(rec->set_recording_channels(numRecChannels, Chan)==false)
     {
-      cerr << "mainWindow::update_recording_channels(), problem setting recording channels\n";
+      cerr << "mainWindow::update_recording_channels(), problem settig recording channels\n";
     }
   delete[] Chan;
 #ifdef DEBUG_WIN

@@ -28,22 +28,29 @@ class recording
   bool set_recording_channels(int numChannels, unsigned int* channelList);
   bool get_is_recording();
   int get_number_channels_save();
-  char* get_file_name();
-  char* get_directory_name();
-  void set_file_name(const char* fn);
-  void set_directory_name(const char* dn);
+  string get_file_base();
+  string get_directory_name();
+  string get_file_name();
+  int get_file_index();
+  int get_recording_duration_sec();
+  void set_file_index(int i);
+  void set_file_base(string fb);
+  void set_directory_name(string dir);
+  void set_max_recording_time(double time_min);
   static void *recording_thread_helper(void *context) // helper function to start the new thread
   {
     ((recording *)context)->recording_thread_function();
   }
-
     
  private:
   dataBuffer* db;
   bool is_recording; // to send signal to the recording thread
   FILE *file;
-  char* file_name; // file name from gui
-  char* directory_name; // 
+  string file_base;
+  int file_index;
+  string date_string;
+  string directory_name; // 
+  string file_name;
   off_t file_size; // to check if the file size makes sense
   off_t predicted_file_size; // to check the size of file at the end
   int number_channels_save; // number of channels that will be saved
@@ -64,13 +71,18 @@ class recording
   timeKeeper tk;
 
   void *recording_thread_function(void);
-  bool save_buffer_to_file();
+  int save_buffer_to_file();
   bool open_file();
   bool close_file();
+  void set_date_string();
+  void generate_file_name();
+  double max_recording_time_min;
+  bool next_recording_file();
 
   // following variables that changes during recording process
   int new_samples_in_buffer;
   unsigned long int number_samples_saved; // this is the 0-based index of first sample in the recording buffer
+  unsigned long int number_samples_saved_current_file;
   double recording_time_sec;
 };
 

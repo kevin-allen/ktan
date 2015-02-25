@@ -51,58 +51,15 @@ class mainWindow: public Gtk::Window
 
   Gtk::TreeView* recording_treeview;
   Gtk::SpinButton* trial_spinbutton;
-  Gtk::Entry* file_name_entry;
+  Gtk::Entry* file_base_entry;
   Gtk::Statusbar* statusbar;
 
+  Gtk::SpinButton* max_recording_time_spinbutton;
+
+  sigc::slot<bool> tslot;
+  sigc::connection statusbar_timeout_connection; // for timeout
+   
   string date_string;
-  /* GtkWidget *window;  // main window */
-  /* GtkWidget *vbox1; // main vbox in the main window, to put the gtkdatabox */
-  /* GtkWidget *test_label; */
-  /* GtkWidget *drawing_area; */
-  /* GdkColor color; */
-  /* GtkAdjustment *sampling_rate_adjustment; */
-  /* GtkAdjustment *osc_group_adjustment; */
-  /* GtkAdjustment *osc_group_preferences_adjustment; */
-  /* GtkAdjustment *trial_no_adjustment; */
-  /* GtkWidget *about_dlg; // about dialog */
-  /* GtkWidget *acquisition_dlg; */
-  /* GtkWidget *oscilloscope_dlg; */
-  /* GtkWidget *recording_dlg; */
-  /* GtkWidget *toolbar; */
-  /* GtkWidget *dev1_name_label; // to show user the name of device */
-  /* GtkWidget *dev2_name_label; // to show user the driver */
-  /* GtkWidget *dev1_driver_label; */
-  /* GtkWidget *dev2_driver_label; */
-  /* GtkWidget *num_devices_detected_label; */
-  /* GtkWidget *sampling_rate_value_label; */
-  /* GtkWidget *num_available_channels_label; */
-  /* GtkWidget *num_channels_device_1_label; */
-  /* GtkWidget *num_channels_device_2_label; */
-  /* GtkWidget *range_label; */
-  /* GtkWidget *current_saving_directory_label2; */
-  /* GtkWidget *group_preferences_spinbutton; */
-  /* GtkWidget *preferences_channel_vbox; // to display the channel information */
-  /* GtkWidget *file_name_entry; // filebase of the file name */
-  /* GtkWidget *trial_spinbutton; // index following filebase for file name */
-  /* GtkWidget *statusbar; // index following filebase for file name    */
-  /* GtkWidget *group_spinbutton; // for oscilloscope display group */
-  /* GtkWidget *recording_channel_view; // treeview to select the channels to record */
-  /* GtkWidget *time_decrease_image; */
-  /* GtkWidget *time_increase_image; */
-  /* GtkWidget *gain_decrease_image; */
-  /* GtkWidget *gain_increase_image; */
-  /* GtkWidget *time_decrease_toolbutton; */
-  /* GtkWidget *time_increase_toolbutton; */
-  /* GtkWidget *gain_decrease_toolbutton; */
-  /* GtkWidget *gain_increase_toolbutton; */
-
-  /* GtkListStore  *recording_channel_store; //to fill up the treeview to select the recording channels */
-  /* GtkWidget *oscilloscope_all_channels_view; // treeview to select the channels to record */
-  /* GtkListStore  *oscilloscope_all_channels_store; // to fill the treeview to select the channels for oscilloscope */
-  /* GtkWidget *oscilloscope_selected_channels_view; // selected channels for a page of the oscilloscope */
-  /* GtkListStore *oscilloscope_selected_channels_store; // to fill the treeview for a group of the oscilloscope */
-  /* int is_filling_selected_channel_liststore; */
-
 
 
   //Tree model columns:
@@ -135,10 +92,9 @@ class mainWindow: public Gtk::Window
   void on_recording_menuitem_activate();
   void change_recording_treeview_selection(bool sel);
   void update_recording_channels();
-  string get_file_name_from_window();
   void build_model_recording_treeview();
   bool check_file_overwrite();
-  void set_date_string();
+  bool on_statusbar_timeout();
 };
 
 #endif // MAINWINDOW_H

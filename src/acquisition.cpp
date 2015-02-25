@@ -1,4 +1,4 @@
-#define DEBUG_ACQ
+//#define DEBUG_ACQ
 #include "acquisition.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
@@ -1002,11 +1002,26 @@ bool acquisition::stop_acquisition()
     return true;
   
   is_acquiring = false;
+  
+  usleep(50000); // allow thread to die
+
+#ifdef DEBUG_ACQ
+  cerr << "stop_acquisition: setContinuousRunMode(false)\n";
+#endif
   evalBoard->setContinuousRunMode(false);
+
+#ifdef DEBUG_ACQ
+  cerr << "stop_acquisition: setMaxTimeStep(0)\n";
+#endif
+
   evalBoard->setMaxTimeStep(0);
-  // give time to acquisition thread to die
-  nanosleep(&inter_acquisition_sleep_timespec,&req);
-  nanosleep(&inter_acquisition_sleep_timespec,&req);
+
+#ifdef DEBUG_ACQ
+  cerr << "stop_acquisition: flush()\n";
+#endif
+
+
+
   // Flush USB FIFO on XEM6010
   evalBoard->flush();
   turnOffLED();

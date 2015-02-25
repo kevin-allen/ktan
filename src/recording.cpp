@@ -24,8 +24,10 @@ recording::recording(dataBuffer* datab)
   char *username=getenv("USER");
   p=getpwnam(username);
   directory_name=strcat(p->pw_dir,"/");
-  file_name="out.dat";
-
+  file_base="xx999";
+  set_date_string();
+  file_index=1;
+  
   proportion_buffer_filled_before_save=FILLING_PROPORTION_BEFORE_SAVE;
     
   number_channels_save=DEFAULT_NUM_CHANNELS_SAVE;
@@ -36,6 +38,7 @@ recording::recording(dataBuffer* datab)
   inter_recording_sleep_ms=40;
   inter_recording_sleep_timespec=tk.set_timespec_from_ms(inter_recording_sleep_ms);
   number_samples_saved=0;
+  number_samples_saved_current_file=0;
   for (int i=0;i<number_channels_save;i++)
     channel_list[i]=i;
   
@@ -57,6 +60,37 @@ recording::~recording()
 #ifdef DEBUG_REC
   cerr << "leaving recording::~recording()\n";
 #endif
+}
+
+void recording::set_date_string()
+{
+  std::stringstream syear;
+  std::stringstream smonth;
+  std::stringstream sday;
+  time_t t = time(0);   // get time now
+  struct tm * now = localtime( & t );
+  syear << (now->tm_year+1900);
+  if((now->tm_mon+1)<10)
+    smonth << "0" << (now->tm_mon+1);
+  else
+    smonth << (now->tm_mon+1);
+  if(now->tm_mday<10)
+    sday << "0" << now->tm_mday;
+  else
+    sday << now->tm_mday;
+  date_string=sday.str()+smonth.str()+syear.str();
+}
+void recording::generate_file_name()
+{
+  std::stringstream ss;
+  
+
+  if(file_index<10)
+    ss << directory_name <<  file_base << "-" << date_string << "_0" << file_index << ".dat";
+  else
+    ss << file_name << directory_name << file_base << "-" << date_string << "_" << file_index << ".dat";
+
+  file_name=ss.str();
 }
 
 
@@ -97,6 +131,8 @@ bool recording::start_recording()
     }
   number_samples_saved=0;
   new_samples_in_buffer=0;
+  number_samples_saved_current_file=0;
+  generate_file_name();
   is_recording=true;
   
   if(open_file()==false)
@@ -105,6 +141,10 @@ bool recording::start_recording()
       is_recording==false;
       return false;
     }
+  clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
+  clock_gettime(CLOCK_REALTIME, &now_timespec);
+  duration_recording_timespec=tk.diff(&start_recording_time_timespec,&now_timespec);
+
 
 #ifdef DEBUG_REC
   cerr << "leaving recording::start_recording()\n";
@@ -122,13 +162,12 @@ bool recording::stop_recording()
       cerr << "recording::stop_recording(), is_recording already false\n";
     }
   is_recording=false;
-  nanosleep(&inter_recording_sleep_timespec,&req);
-  nanosleep(&inter_recording_sleep_timespec,&req);
+  usleep(100000);
   if(close_file()==false)
     {
       cerr << "recording::stop_recording(), problem closing the file\n";
     }
-
+  file_index++;
 #ifdef DEBUG_REC
   cerr << "leaving recording::stop_recording()\n";
 #endif
@@ -138,27 +177,66 @@ bool recording::get_is_recording()
 {
   return is_recording;
 }
-void recording::set_file_name(const char* fn)
+
+void recording::set_file_base(string fb)
 {
-  file_name=g_strdup_printf("%s",fn);
+  file_base=fb;
+  generate_file_name();
 }
-void recording::set_directory_name(const char* dn)
+void recording::set_directory_name(string dn)
 {
-  directory_name=g_strdup_printf("%s",dn);
+  directory_name=dn;
+  generate_file_name();
+}
+void recording::set_file_index(int i)
+{
+  file_index=i;
+  generate_file_name();
 }
 
 int recording::get_number_channels_save()
 {
   return number_channels_save;
 }
-char* recording::get_file_name()
+string recording::get_file_name()
 {
   return file_name;
 }
-char* recording::get_directory_name()
+string recording::get_directory_name()
 {
   return directory_name;
 }
+string recording::get_file_base()
+{
+  return file_base;
+}
+int recording::get_file_index()
+{
+  return file_index;
+}
+
+bool recording::next_recording_file()
+{
+#ifdef DEBUG_REC
+  cerr << "entering recording::next_recording_file()\n";
+#endif
+  close_file();
+  file_index++;
+  generate_file_name();
+  if(open_file()==false)
+    {
+      cerr << "recording::next_recording_file(), problem opening file\n";
+      is_recording==false;
+      return false;
+    }
+  clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
+  number_samples_saved_current_file=0;
+#ifdef DEBUG_REC
+  cerr << "leaving recording::next_recording_file()\n";
+#endif
+  
+}
+
 
 
 void *recording::recording_thread_function(void)
@@ -182,10 +260,20 @@ void *recording::recording_thread_function(void)
       
       if(new_samples_in_buffer>max_samples_in_buffer*proportion_buffer_filled_before_save)
 	{
-	  save_buffer_to_file();
-	  // save buffer to file
-	}
+	  if(save_buffer_to_file()!=0)	  // save buffer to file
+	    {
+	      cerr << "recording_thread_function(), problem saving buffer to file\n";
+	      is_recording==false;
+	    }
 
+	  // buffer is now empty, check if we need to change to a new file
+	  clock_gettime(CLOCK_REALTIME, &now_timespec);
+	  duration_recording_timespec=tk.diff(&start_recording_time_timespec,&now_timespec);
+	  if((duration_recording_timespec.tv_sec/60)>=max_recording_time_min)
+	    {
+	      next_recording_file();
+	    }
+	}
       // take a break here instead of looping 100% of PCU
       nanosleep(&inter_recording_sleep_timespec,&req);
     }
@@ -195,7 +283,13 @@ void *recording::recording_thread_function(void)
 #endif
 }
 
-bool recording::save_buffer_to_file()
+
+int recording::get_recording_duration_sec()
+{
+  return duration_recording_timespec.tv_sec;
+}
+
+int recording::save_buffer_to_file()
 {
 
 #ifdef DEBUG_REC
@@ -203,12 +297,6 @@ bool recording::save_buffer_to_file()
 #endif
   int num_elements;
   num_elements=new_samples_in_buffer*number_channels_save;
-  
-
-  if (num_elements<=(int)(buffer_size*proportion_buffer_filled_before_save))
-    {
-      return 0;
-    }
   if(fwrite(buffer,sizeof(short int),num_elements,file)!=num_elements)
     {
       cerr << "recording::save_buffer_to_file(), problem saving data in " << file_name << '\n';
@@ -217,8 +305,9 @@ bool recording::save_buffer_to_file()
       return -1;
     }
   number_samples_saved+=new_samples_in_buffer; // update count
+  number_samples_saved_current_file+=new_samples_in_buffer;
   new_samples_in_buffer=0;
-
+  return 0;
 #ifdef DEBUG_REC
   cerr << "save_buffer_to_file(), num_elements: " << num_elements << "\n";
 #endif
@@ -232,15 +321,14 @@ bool recording::save_buffer_to_file()
 }
 bool recording::open_file()
 {
-  char* df = g_strdup_printf("%s%s",directory_name,file_name);
 #ifdef DEBUG_REC
-  cerr << "entering recording::open_file(), file_name: " << df << "\n";
+  cerr << "entering recording::open_file(), file_name: " << file_name << "\n";
 #endif
 
-  file=fopen(df,"w");
+  file=fopen(file_name.c_str(),"w");
   if (file==NULL)
     {
-      cerr << "recording::open_file() error opening " << df << '\n';
+      cerr << "recording::open_file() error opening " << file_name << '\n';
       return -1;
     }
 #ifdef DEBUG_REC
@@ -262,5 +350,17 @@ bool recording::close_file()
 #endif
   
   return true;
+
+}
+void recording::set_max_recording_time(double time_min)
+{
+#ifdef DEBUG_REC
+  cerr << "entering recording::set_max_recording_time()\n";
+#endif
+  if(time_min>0)
+    max_recording_time_min=time_min;
+#ifdef DEBUG_REC
+  cerr << "leaving recording::set_max_recording_time()\n";
+#endif
 
 }
