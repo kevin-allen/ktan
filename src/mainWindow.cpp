@@ -20,8 +20,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
   cerr << "entering mainWindow::mainWindow()\n";
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
-  acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
-  rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
+  //acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
+  //rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
 
   // get the widget from builder
   builder->get_widget("play_toolbutton",play_toolbutton);
@@ -82,8 +82,8 @@ mainWindow::~mainWindow()
   cerr << "entering mainWindow::~mainWindow()\n";
 #endif
 
-  delete acq;
-  delete rec;
+  //delete acq;
+  //delete rec;
   delete db;
 
 #ifdef DEBUG_WIN
