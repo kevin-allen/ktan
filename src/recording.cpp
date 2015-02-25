@@ -131,7 +131,10 @@ bool recording::stop_recording()
 #endif
 }
 
-
+bool recording::get_is_recording()
+{
+  return is_recording;
+}
 void *recording::recording_thread_function(void)
 {
 #ifdef DEBUG_REC

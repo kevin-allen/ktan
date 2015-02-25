@@ -7,6 +7,10 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
+you need to install:
+yum install gtkmm30-devel.x86_64
+
+
 If you are using ktan for research purposes and get to publish the data, please be kind enough to refer to ktan. 
 
 To install: ./autogen.sh;./configure; make; su -; make install

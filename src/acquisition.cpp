@@ -252,8 +252,10 @@ void acquisition::settingAmp()
 
 }
 
-
-
+bool acquisition::get_is_acquiring()
+{
+  return is_acquiring;
+}
 
 
 
