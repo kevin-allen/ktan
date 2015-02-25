@@ -20,9 +20,10 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
   cerr << "entering mainWindow::mainWindow()\n";
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
-  //acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
-  //rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
-
+  acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
+  rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
+  num_channels=32;
+  
   // get the widget from builder
   builder->get_widget("play_toolbutton",play_toolbutton);
   builder->get_widget("record_toolbutton",record_toolbutton);
@@ -32,6 +33,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("gain_decrease_toolbutton",gain_decrease_toolbutton);
   builder->get_widget("time_increase_toolbutton",time_increase_toolbutton);
   builder->get_widget("time_decrease_toolbutton",time_decrease_toolbutton);
+  builder->get_widget("add_toolbutton",add_toolbutton);
+  builder->get_widget("remove_toolbutton",remove_toolbutton);
   builder->get_widget("about_menuitem",about_menuitem);
   builder->get_widget("about_dialog",about_dialog);
   builder->get_widget("recording_dialog",recording_dialog);
@@ -39,16 +42,23 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("oscilloscope_menuitem",oscilloscope_menuitem);
   builder->get_widget("recording_menuitem",recording_menuitem);
   builder->get_widget("recording_treeview",recording_treeview);
+  builder->get_widget("statusbar",statusbar);
+  builder->get_widget("trial_spinbutton",trial_spinbutton);
+  builder->get_widget("file_name_entry",file_name_entry);
+
   
   // connect signals to functions
   play_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_play_toolbutton_toggled));
-  record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
+  record_toolbutton_connection = record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
   rewind_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_rewind_toolbutton_clicked));
   forward_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_forward_toolbutton_clicked));
   gain_increase_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_gain_increase_toolbutton_clicked));
   gain_decrease_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_gain_decrease_toolbutton_clicked));
   time_increase_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_time_increase_toolbutton_clicked));
   time_decrease_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_time_decrease_toolbutton_clicked));
+  add_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_add_toolbutton_clicked));
+  remove_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_remove_toolbutton_clicked));
+
   about_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_about_menuitem_activate));
   quit_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_quit_menuitem_activate));
   oscilloscope_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_oscilloscope_menuitem_activate));
@@ -56,26 +66,47 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
 
   // // start data acquisition on the board
-  // acq->start_acquisition();
+  //  acq->start_acquisition();
   // //start a thread that will get the data comming from usb and put them into db
-  // pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
-
-  // rec->start_recording();
-  // pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
-  // sleep(5);
+  //pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
+  
+  //rec->start_recording();
+  //pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
+  //sleep(5);
   // // stop acquisition, the acquisition thread will die
-  // acq->stop_acquisition();
-  // rec->stop_recording();
+  //acq->stop_acquisition();
+  //rec->stop_recording();
 
+  // set date in file name
+  set_date_string();
+  file_name_entry->set_text("xx999-"+date_string);
+  
   build_model_recording_treeview();
   
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::mainWindow()\n";
 #endif
-
-
 }
 
+void mainWindow::set_date_string()
+{
+  std::stringstream syear;
+  std::stringstream smonth;
+  std::stringstream sday;
+  time_t t = time(0);   // get time now
+  struct tm * now = localtime( & t );
+  syear << (now->tm_year+1900);
+  if((now->tm_mon+1)<10)
+    smonth << "0" << (now->tm_mon+1);
+  else
+    smonth << (now->tm_mon+1);
+  if(now->tm_mday<10)
+    sday << "0" << now->tm_mday;
+  else
+    sday << now->tm_mday;
+  date_string=sday.str()+smonth.str()+syear.str();
+
+}
 mainWindow::~mainWindow()
 {
 #ifdef DEBUG_WIN
@@ -110,10 +141,109 @@ void mainWindow::on_record_toolbutton_toggled()
   cerr << "entering mainWindow::on_record_toolbutton_toggled()\n";
 #endif
 
+  unsigned int m_context_id;
+  m_context_id = statusbar->get_context_id("Statusbar example");
+
+  if(rec->get_is_recording()==true)
+    {
+      // recording is running, stop it
+      cerr << "recording is running, stop it\n";
+      rec->stop_recording();
+      acq->stop_acquisition();
+      statusbar->pop(m_context_id);
+      trial_spinbutton->set_value(trial_spinbutton->get_value()+1);
+    }
+  else 
+    {
+      // recording not running, start it
+      db->resetData();
+      cerr << "recording not running, start it\n";
+      rec->set_file_name(get_file_name_from_window().c_str());
+      if(check_file_overwrite()==false)
+	{
+	  cerr << "check file overwrite returned false, abort recording\n";
+	  record_toolbutton_connection.disconnect();
+	  record_toolbutton->set_active(false);
+	  record_toolbutton_connection = record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
+	  return;
+	}
+      if(acq->get_is_acquiring()==false)
+	{
+	  cerr << "start acquisition\n";
+	  acq->start_acquisition();
+	  pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
+	}
+      else
+	{
+	  cerr << "acquisition was already running\n";
+	}
+      
+      cerr << "start recording\n";
+      rec->start_recording();
+      pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
+
+      std::stringstream ss;
+      ss << "recording " << rec->get_number_channels_save() << " channels to " << rec->get_file_name();
+      statusbar->pop(m_context_id);
+      statusbar->push(ss.str(),m_context_id);
+    }
+
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_record_toolbutton_toggled()\n";
 #endif
 }
+
+
+bool mainWindow::check_file_overwrite() // abort when returned false
+{
+  string fd =g_strdup_printf("%s%s",rec->get_directory_name(),rec->get_file_name());
+
+  struct stat st;
+  if(stat(fd.c_str(),&st)== 0)
+    {
+
+      Gtk::MessageDialog dialog(*this, fd,
+				false /* use_markup */, Gtk::MESSAGE_QUESTION,
+				Gtk::BUTTONS_YES_NO);
+
+
+      dialog.set_secondary_text("This file already exists. Do you want to overwrite it?");
+      
+      int result = dialog.run();
+
+      switch(result)
+	{
+	case(Gtk::RESPONSE_YES):
+	  {
+	    return true;
+	  }
+	case(Gtk::RESPONSE_NO):
+	  {
+	    return false;
+	    break;
+	  }
+	default:
+	  {
+	    return false;
+	    break;
+	  }
+	}
+  
+    }
+  return true;
+}
+
+string mainWindow::get_file_name_from_window()
+{
+  string file_name;
+  string directory;
+  if(trial_spinbutton->get_value()<10)
+    file_name=file_name_entry->get_text() + "_0" + trial_spinbutton->get_text()+".dat";
+  else
+    file_name=file_name_entry->get_text() + "_" + trial_spinbutton->get_text()+".dat";
+  return file_name;
+}
+
 void mainWindow::on_rewind_toolbutton_clicked()
 {
 #ifdef DEBUG_WIN
@@ -267,25 +397,29 @@ void mainWindow::build_model_recording_treeview()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::build_model_recording_treeview()\n";
 #endif
+
   //Add the TreeView's view columns:
-  //This number will be shown with the default numeric formatting.
   recording_treeview->append_column("ID", m_RecordingColumns.m_col_id);
   recording_treeview->append_column("Name", m_RecordingColumns.m_col_name);
   recording_treeview->append_column("Select", m_RecordingColumns.m_col_selected);
-  
+
+  // allow selection of rows
   Gtk::TreeView::Column* pColumn = recording_treeview->get_column(2);
   pColumn->set_clickable(true);
 
-
   // http://www.pygtk.org/pygtk2tutorial/sec-TreeSelections.html
+
+  // allow multiple selection
   Glib::RefPtr<Gtk::TreeSelection> ts = recording_treeview->get_selection();
   ts->set_mode(Gtk::SELECTION_MULTIPLE);
   
+  // set the model for the treeview
   m_refRecTreeModel = Gtk::ListStore::create(m_RecordingColumns);
   recording_treeview->set_model(m_refRecTreeModel);
 
+  // fill up the model
   Gtk::TreeModel::Row row;
-  for(int i = 0; i < 32; i++)
+  for(unsigned int i = 0; i < num_channels; i++)
     { 
       row = *(m_refRecTreeModel->append());
       std::stringstream ss;
@@ -298,4 +432,83 @@ void mainWindow::build_model_recording_treeview()
 #ifdef DEBUG_WIN
   cerr << "leave mainWindow::build_model_recording_treeview()\n";
 #endif
+}
+
+void mainWindow::on_add_toolbutton_clicked()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_add_toolbutton_clicked()\n";
+#endif
+    change_recording_treeview_selection(true);
+    update_recording_channels();
+#ifdef DEBUG_WIN
+  cerr << "leave mainWindow::on_add_toolbutton_clicked()\n";
+#endif
+}
+void mainWindow::on_remove_toolbutton_clicked()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_remove_toolbutton_clicked()\n";
+#endif
+  change_recording_treeview_selection(false);
+  update_recording_channels();
+#ifdef DEBUG_WIN
+  cerr << "leave mainWindow::on_remove_toolbutton_clicked()\n";
+#endif
+}
+void mainWindow::update_recording_channels()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::update_recording_channels()\n";
+#endif
+  int numRecChannels=0;
+  unsigned int* Chan;
+  Chan = new unsigned int [num_channels];
+  typedef Gtk::TreeModel::Children type_children; //minimise code length.
+  type_children children = m_refRecTreeModel->children();
+  for(type_children::iterator iter = children.begin(); iter != children.end(); ++iter)
+    {
+       Gtk::TreeModel::Row row = *iter;
+       if(row[m_RecordingColumns.m_col_selected] == true)
+	 {
+	   Chan[numRecChannels]=row[m_RecordingColumns.m_col_id];
+	   numRecChannels++;
+         }
+    } 
+#ifdef DEBUG_WIN
+  cerr << numRecChannels << " channels to record\n";
+#endif
+  if(rec->set_recording_channels(numRecChannels, Chan)==false)
+    {
+      cerr << "mainWindow::update_recording_channels(), problem setting recording channels\n";
+    }
+  delete[] Chan;
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::update_recording_channels()\n";
+#endif
+  
+}
+
+void mainWindow::change_recording_treeview_selection(bool sel)
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::change_recording_treeview_selection()\n";
+#endif
+  // get selected row in treeview model
+  Glib::RefPtr<Gtk::TreeSelection> ts = recording_treeview->get_selection();
+  std::vector<Gtk::TreeModel::Path> pathlist;
+  pathlist = ts->get_selected_rows(); 
+
+  // get change selected rows
+  for(int i = 0; i < pathlist.size(); i++)
+    {
+      Gtk::TreeModel::iterator iter =  m_refRecTreeModel->get_iter(pathlist[i]);
+      Gtk::TreeModel::Row row = *iter;
+      // now do what you need to do with the data in your TreeModel
+      row[m_RecordingColumns.m_col_selected] = false;
+    } 
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::change_recording_treeview_selection()\n";
+#endif
+
 }

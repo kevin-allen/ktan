@@ -30,6 +30,7 @@ class dataBuffer
   int getNumChannels();
   void addNewData(int numSamples,short int* data);
   int getNewData(int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
+  void resetData();
   
  private:
   pthread_mutex_t data_buffer_mutex;

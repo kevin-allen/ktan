@@ -18,6 +18,7 @@ class mainWindow: public Gtk::Window
   int acquisition_thread_id;
   pthread_t recording_thread;
   int recording_thread_id;
+  int num_channels;
   
  public:
   mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);//constructor
@@ -29,27 +30,31 @@ class mainWindow: public Gtk::Window
   // widgets
   Gtk::ToggleToolButton* play_toolbutton;
   Gtk::ToggleToolButton* record_toolbutton;
+  sigc::connection record_toolbutton_connection;
   Gtk::ToolButton*  rewind_toolbutton;
   Gtk::ToolButton*  forward_toolbutton;
   Gtk::ToolButton*  gain_increase_toolbutton;
   Gtk::ToolButton*  gain_decrease_toolbutton;
   Gtk::ToolButton*  time_increase_toolbutton;
   Gtk::ToolButton*  time_decrease_toolbutton;
+  Gtk::ToolButton*  add_toolbutton;
+  Gtk::ToolButton*  remove_toolbutton;
 
   Gtk::MenuItem* about_menuitem;
   Gtk::MenuItem* quit_menuitem;
   Gtk::MenuItem* oscilloscope_menuitem;
   Gtk::MenuItem* recording_menuitem;
 
-
   Gtk::AboutDialog* about_dialog;
   Gtk::Dialog* recording_dialog;
   Gtk::Dialog* oscilloscope_dialog;
 
   Gtk::TreeView* recording_treeview;
+  Gtk::SpinButton* trial_spinbutton;
+  Gtk::Entry* file_name_entry;
+  Gtk::Statusbar* statusbar;
 
-
-
+  string date_string;
   /* GtkWidget *window;  // main window */
   /* GtkWidget *vbox1; // main vbox in the main window, to put the gtkdatabox */
   /* GtkWidget *test_label; */
@@ -100,21 +105,18 @@ class mainWindow: public Gtk::Window
 
 
 
-//Tree model columns:
+  //Tree model columns:
   class ModelRecordingColumns : public Gtk::TreeModel::ColumnRecord
   {
   public:
-
     ModelRecordingColumns()
     { add(m_col_id); add(m_col_name); add(m_col_selected);}
-
     Gtk::TreeModelColumn<unsigned int> m_col_id;
     Gtk::TreeModelColumn<Glib::ustring> m_col_name;
     Gtk::TreeModelColumn<bool> m_col_selected;
   };
   ModelRecordingColumns m_RecordingColumns;
   Glib::RefPtr<Gtk::ListStore> m_refRecTreeModel;
-
 
   // callback functions
   void on_play_toolbutton_toggled();
@@ -125,14 +127,18 @@ class mainWindow: public Gtk::Window
   void on_gain_decrease_toolbutton_clicked();
   void on_time_increase_toolbutton_clicked();
   void on_time_decrease_toolbutton_clicked();
+  void on_add_toolbutton_clicked();
+  void on_remove_toolbutton_clicked();
   void on_about_menuitem_activate();
   void on_quit_menuitem_activate();
   void on_oscilloscope_menuitem_activate();
   void on_recording_menuitem_activate();
-  
-  // 
+  void change_recording_treeview_selection(bool sel);
+  void update_recording_channels();
+  string get_file_name_from_window();
   void build_model_recording_treeview();
-
+  bool check_file_overwrite();
+  void set_date_string();
 };
 
 #endif // MAINWINDOW_H

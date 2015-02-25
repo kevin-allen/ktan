@@ -27,6 +27,11 @@ class recording
   bool stop_recording();
   bool set_recording_channels(int numChannels, unsigned int* channelList);
   bool get_is_recording();
+  int get_number_channels_save();
+  char* get_file_name();
+  char* get_directory_name();
+  void set_file_name(const char* fn);
+  void set_directory_name(const char* dn);
   static void *recording_thread_helper(void *context) // helper function to start the new thread
   {
     ((recording *)context)->recording_thread_function();
@@ -37,8 +42,8 @@ class recording
   dataBuffer* db;
   bool is_recording; // to send signal to the recording thread
   FILE *file;
-  char* file_name; // directory + file name from gui
-  char* directory; // 
+  char* file_name; // file name from gui
+  char* directory_name; // 
   off_t file_size; // to check if the file size makes sense
   off_t predicted_file_size; // to check the size of file at the end
   int number_channels_save; // number of channels that will be saved

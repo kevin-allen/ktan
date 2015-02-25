@@ -1,4 +1,4 @@
-//#define DEBUG_ACQ
+#define DEBUG_ACQ
 #include "acquisition.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
@@ -85,8 +85,9 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
   // contains only one usb block read.
-  localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*numAmplifierChannels];
-  db->setNumChannels(numAmplifierChannels);
+  totalNumChannels=numAmplifierChannels;
+  localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
+  db->setNumChannels(totalNumChannels);
 
   settingAmp();
 
@@ -95,8 +96,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
   inter_acquisition_sleep_timespec=tk.set_timespec_from_ms(inter_acquisition_sleep_ms);
   pause_restart_acquisition_thread_ms=100;
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
-  
-  
+    
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
@@ -171,6 +171,10 @@ void acquisition::openBoardBit()
 
 
 
+}
+int acquisition::get_number_channels()
+{
+  return totalNumChannels;
 }
 
 void acquisition::settingAmp()
@@ -957,8 +961,6 @@ bool acquisition::start_acquisition()
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::start_acquisition()\n";
 #endif
-
-
   if(is_acquiring==true)
     return true;
  
@@ -995,20 +997,20 @@ bool acquisition::stop_acquisition()
   cerr << "entering acquisition::stop_acquisition()\n";
 #endif
  
-
+  
   if(is_acquiring==false)
     return true;
-
+  
   is_acquiring = false;
-
   evalBoard->setContinuousRunMode(false);
   evalBoard->setMaxTimeStep(0);
   // give time to acquisition thread to die
   nanosleep(&inter_acquisition_sleep_timespec,&req);
+  nanosleep(&inter_acquisition_sleep_timespec,&req);
   // Flush USB FIFO on XEM6010
   evalBoard->flush();
   turnOffLED();
-  
+
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::stop_acquisition()\n";
@@ -1066,7 +1068,6 @@ void *acquisition::acquisition_thread_function(void)
   ledIndex=0;
   while(is_acquiring==true)
     {
-      
       // this puts the new usb blocks into dataQueue 
       newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
       // If new data is ready, then read it.

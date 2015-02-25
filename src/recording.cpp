@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <gtkmm.h>
 recording::recording(dataBuffer* datab)
 {
 #ifdef DEBUG_REC
@@ -22,8 +23,8 @@ recording::recording(dataBuffer* datab)
   struct passwd *p;
   char *username=getenv("USER");
   p=getpwnam(username);
-  directory=strcat(p->pw_dir,"/");
-  file_name=strcat(directory,"out.dat");
+  directory_name=strcat(p->pw_dir,"/");
+  file_name="out.dat";
 
   proportion_buffer_filled_before_save=FILLING_PROPORTION_BEFORE_SAVE;
     
@@ -59,7 +60,6 @@ recording::~recording()
 }
 
 
-
 bool recording::set_recording_channels(int numChannels, unsigned int* channelList)
 {
 #ifdef DEBUG_REC
@@ -70,6 +70,12 @@ bool recording::set_recording_channels(int numChannels, unsigned int* channelLis
       cerr << "recording::set_recording_channels(), numChannel is out of range: " << numChannels << "\n";
       return false;
     }
+  if(is_recording)
+    {
+      cerr << "recording::set_recording_channels(), is_recording == true, can't change channel selection during recording\n";
+      return false;
+    }
+
   number_channels_save=numChannels;
   for(int i = 0; i < number_channels_save;i++)
     channel_list[i]=channelList[i];
@@ -100,7 +106,6 @@ bool recording::start_recording()
       return false;
     }
 
-
 #ifdef DEBUG_REC
   cerr << "leaving recording::start_recording()\n";
 #endif
@@ -116,8 +121,6 @@ bool recording::stop_recording()
     {
       cerr << "recording::stop_recording(), is_recording already false\n";
     }
-
-
   is_recording=false;
   nanosleep(&inter_recording_sleep_timespec,&req);
   nanosleep(&inter_recording_sleep_timespec,&req);
@@ -135,6 +138,29 @@ bool recording::get_is_recording()
 {
   return is_recording;
 }
+void recording::set_file_name(const char* fn)
+{
+  file_name=g_strdup_printf("%s",fn);
+}
+void recording::set_directory_name(const char* dn)
+{
+  directory_name=g_strdup_printf("%s",dn);
+}
+
+int recording::get_number_channels_save()
+{
+  return number_channels_save;
+}
+char* recording::get_file_name()
+{
+  return file_name;
+}
+char* recording::get_directory_name()
+{
+  return directory_name;
+}
+
+
 void *recording::recording_thread_function(void)
 {
 #ifdef DEBUG_REC
@@ -206,13 +232,15 @@ bool recording::save_buffer_to_file()
 }
 bool recording::open_file()
 {
+  char* df = g_strdup_printf("%s%s",directory_name,file_name);
 #ifdef DEBUG_REC
-  cerr << "entering recording::open_file(), file_name: " << file_name << "\n";
+  cerr << "entering recording::open_file(), file_name: " << df << "\n";
 #endif
-  file=fopen(file_name,"w");
+
+  file=fopen(df,"w");
   if (file==NULL)
     {
-      cerr << "recording::open_file() error opening " << file_name << '\n';
+      cerr << "recording::open_file() error opening " << df << '\n';
       return -1;
     }
 #ifdef DEBUG_REC
@@ -227,7 +255,8 @@ bool recording::close_file()
 #ifdef DEBUG_REC
   cerr << "entering recording::close_file()\n";
 #endif
-  fclose(file);
+  if(file!=NULL)
+    fclose(file);
 #ifdef DEBUG_REC
   cerr << "leaving recording::close_file()\n";
 #endif

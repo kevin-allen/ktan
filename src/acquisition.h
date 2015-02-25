@@ -29,6 +29,7 @@ class acquisition
   bool start_acquisition();
   bool stop_acquisition();
   bool get_is_acquiring();
+  int get_number_channels();
   static void *acquisition_thread_helper(void *context) // helper function to start the new thread
   {
     ((acquisition *)context)->acquisition_thread_function();
@@ -105,6 +106,7 @@ class acquisition
   // variables to operate the acquisition buffer
   int numChips;
   int numAmplifierChannels;
+  int totalNumChannels;
 
   // to play with leds during acquisition
   int ledArray[8];

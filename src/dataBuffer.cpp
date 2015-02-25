@@ -24,7 +24,6 @@ dataBuffer::dataBuffer()
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::dataBuffer()\n";
 #endif
-
 }
 
 dataBuffer::~dataBuffer()
@@ -38,8 +37,25 @@ dataBuffer::~dataBuffer()
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::~dataBuffer()\n";
 #endif
+}
+
+void dataBuffer::resetData()
+{
+#ifdef DEBUG_BUF
+  cerr << "entering dataBuffer::resetData()\n";
+#endif
+
+  number_samples_read=0; // total samples read since acq started
+  oldest_sample_number=0; // oldest sample number currently in buffer
+  number_samples_in_buffer=0; // number of valid samples in buffer
+  index_next_sample=0;
+  pthread_mutex_unlock(&data_buffer_mutex);
+#ifdef DEBUG_BUF
+  cerr << "leaving dataBuffer::resetData()\n";
+#endif
 
 }
+
 void dataBuffer::setNumChannels(int numChannels)
 {
 #ifdef DEBUG_BUF
