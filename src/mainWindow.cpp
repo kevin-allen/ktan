@@ -4,7 +4,9 @@
 #include "rhd2000registers.h"
 #include "recording.h"
 #include "acquisition.h"
+#include "oscilloscope.h"
 #include "dataBuffer.h"
+#include "channelGroup.h"
 #include <iostream>
 #include <stdlib.h> 
 #include <stdint.h>
@@ -23,6 +25,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
   acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
   rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
+  osc = new oscilloscope(db);
   num_channels=32;
   
   // get the widget from builder
@@ -36,9 +39,13 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("time_decrease_toolbutton",time_decrease_toolbutton);
   builder->get_widget("add_toolbutton",add_toolbutton);
   builder->get_widget("remove_toolbutton",remove_toolbutton);
+  builder->get_widget("add_channel_button",add_channel_button);
+  builder->get_widget("remove_channel_button",remove_channel_button);
+  
   builder->get_widget("about_menuitem",about_menuitem);
   builder->get_widget("about_dialog",about_dialog);
   builder->get_widget("recording_dialog",recording_dialog);
+  builder->get_widget("oscilloscope_dialog",oscilloscope_dialog);
   builder->get_widget("quit_menuitem",quit_menuitem);
   builder->get_widget("oscilloscope_menuitem",oscilloscope_menuitem);
   builder->get_widget("recording_menuitem",recording_menuitem);
@@ -47,6 +54,10 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("trial_spinbutton",trial_spinbutton);
   builder->get_widget("file_base_entry",file_base_entry);
   builder->get_widget("max_recording_time_spinbutton",max_recording_time_spinbutton);
+  builder->get_widget("group_spinbutton",group_spinbutton);
+  builder->get_widget("osc_group_preference_spinbutton",osc_group_preference_spinbutton);
+  builder->get_widget("osc_group_treeview",osc_group_treeview);
+  builder->get_widget("osc_all_channels_treeview",osc_all_channels_treeview);
 
   
   // connect signals to functions
@@ -60,14 +71,16 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   time_decrease_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_time_decrease_toolbutton_clicked));
   add_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_add_toolbutton_clicked));
   remove_toolbutton->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_remove_toolbutton_clicked));
+  add_channel_button->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_add_channel_button_clicked));
+  remove_channel_button->signal_clicked().connect(sigc::mem_fun(*this, &mainWindow::on_remove_channel_button_clicked));
 
   about_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_about_menuitem_activate));
   quit_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_quit_menuitem_activate));
   oscilloscope_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_oscilloscope_menuitem_activate));
   recording_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_recording_menuitem_activate));
-
- 
-
+  group_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_group_spinbutton_value_changed));
+  osc_group_preference_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_osc_group_preference_spinbutton_value_changed));
+  
   // // start data acquisition on the board
   //  acq->start_acquisition();
   // //start a thread that will get the data comming from usb and put them into db
@@ -88,10 +101,24 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
 
 
+  // set group spinbutton, what is show is index of group
+  Glib::RefPtr<Gtk::Adjustment>  osc_group_adjustment= group_spinbutton->get_adjustment();
+  osc_group_adjustment->set_lower(0);
+  osc_group_adjustment->set_upper(osc->get_num_groups()-1); 
+  group_spinbutton->set_value(0);
+  Glib::RefPtr<Gtk::Adjustment>  osc_group_preference_adjustment= group_spinbutton->get_adjustment();
+  osc_group_preference_adjustment=osc_group_preference_spinbutton->get_adjustment();
+  osc_group_preference_adjustment->set_lower(0);
+  osc_group_preference_adjustment->set_upper(osc->get_num_groups()-1); 
+  osc_group_preference_spinbutton->set_value(0);
+
+
   // set max recording time
   max_recording_time_spinbutton->set_value(20);
 
   build_model_recording_treeview();
+  build_model_oscilloscope_all_treeview();
+  build_model_oscilloscope_group_treeview();
   
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::mainWindow()\n";
@@ -104,9 +131,9 @@ mainWindow::~mainWindow()
   cerr << "entering mainWindow::~mainWindow()\n";
 #endif
 
-  // delete acq;
-  // delete rec;
-
+  delete acq;
+  delete rec;
+  delete osc;
   delete db;
 
 #ifdef DEBUG_WIN
@@ -122,11 +149,37 @@ void mainWindow::on_play_toolbutton_toggled()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_play_toolbutton_toggled()\n";
 #endif
+  if(osc->get_is_displaying()==true)
+    {
+      // stop the osc
+      osc->stop_oscilloscope();
+      
+      // if not recording, stop acquisition
+      if(rec->get_is_recording()==false)
+	{ 
+	  cerr << "stop acquisition\n";
+	  acq->stop_acquisition();
+	}
+    }
+  else
+    {
+      if(acq->get_is_acquiring()==false)
+	{
+	  cerr << "starting acquisition\n";
+	  db->resetData();
+	  acq->start_acquisition();
+	  pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
+	}
+      
+      // start the osc
+      osc->start_oscilloscope();
+    }
 
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_play_toolbutton_toggled()\n";
 #endif
 }
+
 void mainWindow::on_record_toolbutton_toggled()
 {
 #ifdef DEBUG_WIN
@@ -394,6 +447,87 @@ void mainWindow::on_recording_menuitem_activate()
   cerr << "leaving mainWindow::recording_menuitem_activate()\n";
 #endif
 }
+
+
+void mainWindow::build_model_oscilloscope_group_treeview()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::build_model_oscilloscope_group_treeview()\n";
+#endif
+  osc_group_treeview->append_column("ID", m_OscilloscopeColumns.m_col_id);
+  osc_group_treeview->append_column("Name", m_OscilloscopeColumns.m_col_name);
+
+ // allow multiple selection
+  Glib::RefPtr<Gtk::TreeSelection> ts = osc_all_channels_treeview->get_selection();
+  ts->set_mode(Gtk::SELECTION_MULTIPLE);
+
+
+  // set the model for the treeview
+  m_refOscGrpTreeModel = Gtk::ListStore::create(m_OscilloscopeColumns);
+  osc_group_treeview->set_model(m_refOscGrpTreeModel);
+
+  // get value in spinbutton
+  int index_group = osc_group_preference_spinbutton->get_value();
+  channelGroup* cg= osc->get_one_channel_group(index_group);
+
+  // add the channels that are in the channel group of the oscilloscope
+  
+  Gtk::TreeModel::Row row;
+  for(int i = 0; i < cg->get_num_channels(); i++)
+    { 
+      row = *(m_refOscGrpTreeModel->append());
+      std::stringstream ss;
+      ss << cg->get_channel_id(i);
+      row[m_RecordingColumns.m_col_id] = cg->get_channel_id(i);
+      row[m_RecordingColumns.m_col_name] = ss.str();
+    }
+
+
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::build_model_oscilloscope_group_treeview()\n";
+#endif
+
+}
+void mainWindow::build_model_oscilloscope_all_treeview()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::build_model_oscilloscope_all_treeview()\n";
+#endif
+  //Add the TreeView's view columns:
+  osc_all_channels_treeview->append_column("ID", m_OscilloscopeColumns.m_col_id);
+  osc_all_channels_treeview->append_column("Name", m_OscilloscopeColumns.m_col_name);
+
+  // allow selection of rows
+  //Gtk::TreeView::Column* pColumn = osc_all_channels_treeview->get_column(2);
+  //pColumn->set_clickable(true);
+
+   // allow multiple selection
+  Glib::RefPtr<Gtk::TreeSelection> ts = osc_all_channels_treeview->get_selection();
+  ts->set_mode(Gtk::SELECTION_MULTIPLE);
+  
+ // set the model for the treeview
+  m_refOscAllTreeModel = Gtk::ListStore::create(m_OscilloscopeColumns);
+  osc_all_channels_treeview->set_model(m_refOscAllTreeModel);
+
+  // fill up the model
+  Gtk::TreeModel::Row row;
+  for(unsigned int i = 0; i < num_channels; i++)
+    { 
+      row = *(m_refOscAllTreeModel->append());
+      std::stringstream ss;
+      ss << i;
+      row[m_RecordingColumns.m_col_id] = i;
+      row[m_RecordingColumns.m_col_name] = ss.str();
+    }
+  
+
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::build_model_oscilloscope_all_treeview()\n";
+#endif
+
+}
+
+
 void mainWindow::build_model_recording_treeview()
 {
 #ifdef DEBUG_WIN
@@ -511,6 +645,151 @@ void mainWindow::change_recording_treeview_selection(bool sel)
     } 
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::change_recording_treeview_selection()\n";
+#endif
+
+}
+
+void mainWindow::on_group_spinbutton_value_changed()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_group_spinbutton_value_changed()\n";
+#endif
+  osc->set_current_group(group_spinbutton->get_value());
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::on_group_spinbutton_value_changed()\n";
+#endif
+  
+}
+void mainWindow::on_osc_group_preference_spinbutton_value_changed()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_osc_group_preference_spinbutton_value_changed()\n";
+#endif
+  // empty the group tree view
+  m_refOscGrpTreeModel->clear();
+
+  // get value in spinbutton
+  int index_group = osc_group_preference_spinbutton->get_value();
+  channelGroup* cg= osc->get_one_channel_group(index_group);
+
+  // add the channels that are in the channel group of the oscilloscope
+  Gtk::TreeModel::Row row;
+  for(int i = 0; i < cg->get_num_channels(); i++)
+    { 
+      row = *(m_refOscGrpTreeModel->append());
+      std::stringstream ss;
+      ss << cg->get_channel_id(i);
+      row[m_RecordingColumns.m_col_id] = cg->get_channel_id(i);
+      row[m_RecordingColumns.m_col_name] = ss.str();
+    }
+
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::on_osc_group_preference_spinbutton_value_changed()\n";
+#endif
+
+}
+ void mainWindow::on_add_channel_button_clicked()
+ {
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_add_channel_button_clicked()\n";
+#endif
+  
+  // check how many channels we can add
+  int maxAdd=0;
+  int index_group = osc_group_preference_spinbutton->get_value();
+  channelGroup* cg= osc->get_one_channel_group(index_group);
+  maxAdd=cg->get_max_num_channels()-cg->get_num_channels();
+
+  Glib::RefPtr<Gtk::TreeSelection> ts = osc_all_channels_treeview->get_selection();
+  std::vector<Gtk::TreeModel::Path> pathlist;
+  pathlist = ts->get_selected_rows(); 
+
+  if(pathlist.size()>maxAdd)
+    {
+      cerr << "mainWindow::on_add_channel_button_clicked, too many channels to add\n";
+      return;
+    }
+    
+  Glib::ustring name;
+  int id;
+  // add the selected rows to the group tree model
+  for(int i = 0; i < pathlist.size(); i++)
+    {
+      Gtk::TreeModel::iterator iter =  m_refOscAllTreeModel->get_iter(pathlist[i]);
+      Gtk::TreeModel::Row row = *iter;
+      Gtk::TreeModel::Row row1 =  *(m_refOscGrpTreeModel->append());
+      // now do what you need to do with the data in your TreeModel
+      id = row[m_OscilloscopeColumns.m_col_id];
+      name = row[m_OscilloscopeColumns.m_col_name];
+      row1[m_OscilloscopeColumns.m_col_id] = id;
+      row1[m_OscilloscopeColumns.m_col_name] = name;
+    }
+
+  copy_osc_group_tree_model_into_channel_group();
+
+  
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::on_add_channel_button_clicked()\n";
+#endif
+
+}
+   
+ void mainWindow::on_remove_channel_button_clicked()
+ {
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_remove_channel_button_clicked()\n";
+#endif
+
+    // get selected row in treeview model
+  Glib::RefPtr<Gtk::TreeSelection> ts = osc_group_treeview->get_selection();
+  std::vector<Gtk::TreeModel::Path> pathlist;
+  pathlist = ts->get_selected_rows(); 
+  if (pathlist.size()>0)
+    {
+      Gtk::TreeModel::iterator iter =  m_refOscGrpTreeModel->get_iter(pathlist[0]);
+      m_refOscGrpTreeModel->erase(iter);
+    }
+  
+  // update the channel group
+  copy_osc_group_tree_model_into_channel_group();
+  
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::on_remove_channel_button_clicked()\n";
+#endif
+ }
+
+void mainWindow::copy_osc_group_tree_model_into_channel_group()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::copy_osc_group_tree_model_into_channel_group()\n";
+#endif
+
+  int index_group = osc_group_preference_spinbutton->get_value();
+  channelGroup* cg= osc->get_one_channel_group(index_group);
+  // copy the tree model into the group
+  typedef Gtk::TreeModel::Children type_children; //minimise code length.
+  type_children children = m_refOscGrpTreeModel->children();
+  int num_channels=0;
+  for(type_children::iterator iter = children.begin(); iter != children.end(); ++iter)
+    num_channels++;
+
+  if(num_channels>cg->get_max_num_channels())
+    {
+      cerr << "mainWindow::copy_osc_group_tree_model_into_channel_group, num_channels is larger than cg can take\n";
+      return;
+    }
+
+  cg->set_num_channels(num_channels);
+  int index=0;
+  for(type_children::iterator iter = children.begin(); iter != children.end(); ++iter)
+    {
+      Gtk::TreeModel::Row row = *iter;
+      cg->set_channel_id(index,row[m_OscilloscopeColumns.m_col_id]);
+      index++;
+    }
+
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::copy_osc_group_tree_model_into_channel_group()\n";
 #endif
 
 }

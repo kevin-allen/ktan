@@ -4,6 +4,7 @@
 #include "rhd2000evalboard.h"
 #include "acquisition.h"
 #include "recording.h"
+#include "oscilloscope.h"
 #include "timeKeeper.h"
 #include "dataBuffer.h"
 
@@ -14,6 +15,7 @@ class mainWindow: public Gtk::Window
   acquisition* acq;
   dataBuffer* db; // data buffer not deutsche bahn
   recording* rec;
+  oscilloscope* osc;
   pthread_t acquisition_thread;
   int acquisition_thread_id;
   pthread_t recording_thread;
@@ -39,6 +41,10 @@ class mainWindow: public Gtk::Window
   Gtk::ToolButton*  time_decrease_toolbutton;
   Gtk::ToolButton*  add_toolbutton;
   Gtk::ToolButton*  remove_toolbutton;
+  
+  Gtk::Button*  add_channel_button;
+  Gtk::Button*  remove_channel_button;
+  
 
   Gtk::MenuItem* about_menuitem;
   Gtk::MenuItem* quit_menuitem;
@@ -49,6 +55,9 @@ class mainWindow: public Gtk::Window
   Gtk::Dialog* recording_dialog;
   Gtk::Dialog* oscilloscope_dialog;
 
+  Gtk::TreeView* osc_group_treeview;
+  Gtk::TreeView* osc_all_channels_treeview;
+
   Gtk::TreeView* recording_treeview;
   Gtk::SpinButton* trial_spinbutton;
   Gtk::Entry* file_base_entry;
@@ -56,6 +65,8 @@ class mainWindow: public Gtk::Window
 
   Gtk::SpinButton* max_recording_time_spinbutton;
 
+  Gtk::SpinButton* group_spinbutton;
+  Gtk::SpinButton* osc_group_preference_spinbutton;
   sigc::slot<bool> tslot;
   sigc::connection statusbar_timeout_connection; // for timeout
    
@@ -73,7 +84,21 @@ class mainWindow: public Gtk::Window
     Gtk::TreeModelColumn<bool> m_col_selected;
   };
   ModelRecordingColumns m_RecordingColumns;
+
   Glib::RefPtr<Gtk::ListStore> m_refRecTreeModel;
+  
+  class ModelOscilloscopeColumns : public Gtk::TreeModel::ColumnRecord
+  {
+  public:
+    ModelOscilloscopeColumns()
+      { add(m_col_id); add(m_col_name);}
+    Gtk::TreeModelColumn<unsigned int> m_col_id;
+    Gtk::TreeModelColumn<Glib::ustring> m_col_name;
+  };
+  ModelRecordingColumns m_OscilloscopeColumns;
+  Glib::RefPtr<Gtk::ListStore> m_refOscGrpTreeModel;
+  Glib::RefPtr<Gtk::ListStore> m_refOscAllTreeModel;
+  
 
   // callback functions
   void on_play_toolbutton_toggled();
@@ -93,8 +118,16 @@ class mainWindow: public Gtk::Window
   void change_recording_treeview_selection(bool sel);
   void update_recording_channels();
   void build_model_recording_treeview();
+  void build_model_oscilloscope_all_treeview();
+  void build_model_oscilloscope_group_treeview();
   bool check_file_overwrite();
   bool on_statusbar_timeout();
+  void on_group_spinbutton_value_changed();
+  void on_osc_group_preference_spinbutton_value_changed();
+  void on_add_channel_button_clicked();
+  void on_remove_channel_button_clicked();
+  void copy_osc_group_tree_model_into_channel_group();
+
 };
 
 #endif // MAINWINDOW_H

@@ -388,36 +388,35 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkDialog" id="oscilloscope_dialog">
-    <property name="width_request">700</property>
-    <property name="height_request">700</property>
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
-    <property name="title" translatable="yes">Oscilloscope preferences</property>
+    <property name="title" translatable="yes">oscilloscope</property>
+    <property name="default_width">500</property>
+    <property name="default_height">800</property>
     <property name="type_hint">dialog</property>
-    <signal name="delete-event" handler="on_oscilloscope_dialog_delete_event" after="yes" swapped="no"/>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox6">
         <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
-          <object class="GtkButtonBox" id="dialog-action_area6">
+          <object class="GtkButtonBox" id="dialog-action_area2">
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
               <placeholder/>
             </child>
             <child>
-              <object class="GtkButton" id="ok_oscilloscope_button">
-                <property name="label">gtk-ok</property>
+              <object class="GtkButton" id="button1">
+                <property name="label">gtk-close</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_stock">True</property>
-                <signal name="clicked" handler="on_ok_oscilloscope_button_clicked" after="yes" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
-                <property name="fill">False</property>
+                <property name="fill">True</property>
                 <property name="position">1</property>
               </packing>
             </child>
@@ -430,18 +429,20 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="osc_vbox1">
+          <object class="GtkBox" id="box1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
             <child>
-              <object class="GtkHBox" id="hbox16">
+              <object class="GtkBox" id="box2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkLabel" id="osc_group_label1">
+                  <object class="GtkLabel" id="osc_group_spin_label">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Group:</property>
+                    <property name="xpad">5</property>
+                    <property name="label" translatable="yes">channel group:</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -454,11 +455,9 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="invisible_char">●</property>
-                    <property name="invisible_char_set">True</property>
-                    <property name="primary_icon_activatable">False</property>
-                    <property name="secondary_icon_activatable">False</property>
                     <property name="adjustment">osc_group_preferences_adjustment</property>
-                    <signal name="value-changed" handler="on_osc_group_preference_spinbutton_value_changed" after="yes" swapped="no"/>
+                    <property name="climb_rate">1</property>
+                    <property name="numeric">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -468,16 +467,18 @@
                 </child>
               </object>
               <packing>
-                <property name="expand">True</property>
+                <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="osc_label_selected1">
+              <object class="GtkLabel" id="osc_group_label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Selected channels for this group</property>
+                <property name="xpad">5</property>
+                <property name="ypad">5</property>
+                <property name="label" translatable="yes">group</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -486,17 +487,16 @@
               </packing>
             </child>
             <child>
-              <object class="GtkScrolledWindow" id="scrolledwindow3">
-                <property name="height_request">200</property>
+              <object class="GtkScrolledWindow" id="osc_group_scrolledwindow">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="shadow_type">in</property>
                 <child>
-                  <object class="GtkTreeView" id="osc_selected_channels_treeview">
+                  <object class="GtkTreeView" id="osc_group_treeview">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="reorderable">True</property>
                     <child internal-child="selection">
-                      <object class="GtkTreeSelection" id="treeview-selection1"/>
+                      <object class="GtkTreeSelection" id="treeview-selection2"/>
                     </child>
                   </object>
                 </child>
@@ -508,37 +508,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToolbar" id="toolbar1">
+              <object class="GtkLabel" id="osc_all_channel_label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <child>
-                  <object class="GtkToolButton" id="osc_add_toolbutton">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">previous</property>
-                    <property name="use_underline">True</property>
-                    <property name="stock_id">gtk-add</property>
-                    <signal name="clicked" handler="on_osc_add_toolbutton_clicked" after="yes" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="homogeneous">True</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkToolButton" id="osc_remove_toolbutton">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">previous</property>
-                    <property name="use_underline">True</property>
-                    <property name="stock_id">gtk-remove</property>
-                    <signal name="clicked" handler="on_osc_remove_toolbutton_clicked" after="yes" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="homogeneous">True</property>
-                  </packing>
-                </child>
+                <property name="xpad">5</property>
+                <property name="ypad">5</property>
+                <property name="label" translatable="yes">all channels</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -547,34 +522,61 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="osc_list_label1">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="label" translatable="yes">List of all channels</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">4</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkScrolledWindow" id="scrolledwindow4">
-                <property name="height_request">250</property>
+              <object class="GtkScrolledWindow" id="scrolledwindow1">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="shadow_type">in</property>
                 <child>
                   <object class="GtkTreeView" id="osc_all_channels_treeview">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <child internal-child="selection">
-                      <object class="GtkTreeSelection" id="treeview-selection2"/>
+                      <object class="GtkTreeSelection" id="treeview-selection5"/>
                     </child>
                   </object>
                 </child>
               </object>
               <packing>
                 <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox" id="box3">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkButton" id="add_channel_button">
+                    <property name="label">gtk-add</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_stock">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="remove_channel_button">
+                    <property name="label">gtk-discard</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_stock">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">5</property>
               </packing>
@@ -589,7 +591,7 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">ok_oscilloscope_button</action-widget>
+      <action-widget response="0">button1</action-widget>
     </action-widgets>
   </object>
   <object class="GtkDialog" id="recording_dialog">

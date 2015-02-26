@@ -19,8 +19,9 @@ dataBuffer::dataBuffer()
   index_next_sample=0;
   number_channels=0;
   addAtEnd=0;
+  sampling_rate=0;
   buffer = new short int [buffer_size];
-
+  pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::dataBuffer()\n";
 #endif
@@ -238,4 +239,12 @@ int dataBuffer::getNewData(int firstSample, short int* data, int maxSamples,int 
   cerr << "leaving dataBuffer::getNewData(int, short int* )\n";
 #endif
   return samplesToCopy;
+}
+void dataBuffer::set_sampling_rate(int sr)
+{
+  sampling_rate=sr;
+}
+int dataBuffer::get_sampling_rate()
+{
+  return sampling_rate;
 }

@@ -1,0 +1,35 @@
+//#define DEBUG_REC
+#include "channelGroup.h"
+#include <stdlib.h> 
+#include <stdint.h>
+#include <iostream>
+#include <pwd.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <gtkmm.h>
+channelGroup::channelGroup()
+{
+#ifdef DEBUG_REC
+  cerr << "entering channelGroup::channelGroup()\n";
+#endif
+  num_channels=0;
+  max_num_channels=MAX_CHANNELS_PER_GROUP;
+  channel_list = new int[max_num_channels];
+#ifdef DEBUG_REC
+  cerr << "leaving channelGroup::channelGroup()\n";
+#endif
+}
+
+channelGroup::~channelGroup()
+{
+  delete[] channel_list;
+}
+
+void channelGroup::set_channel_list(int numChannels, int* channelList)
+{
+  if(numChannels<0)
+    {
+  cerr << "channelGroup::set_channel_list(), numChannels < 0: " << numChannels << '\n';
+  return;
+}

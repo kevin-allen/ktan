@@ -1,4 +1,4 @@
-#define DEBUG_REC
+//#define DEBUG_REC
 #include "recording.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -24,7 +24,7 @@ recording::recording(dataBuffer* datab)
   char *username=getenv("USER");
   p=getpwnam(username);
   directory_name=strcat(p->pw_dir,"/");
-  file_base="xx999";
+  file_base="xX800";
   set_date_string();
   file_index=1;
   

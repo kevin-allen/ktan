@@ -31,6 +31,9 @@ class dataBuffer
   void addNewData(int numSamples,short int* data);
   int getNewData(int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
   void resetData();
+  void set_sampling_rate(int sr);
+  int get_sampling_rate();
+  
   
  private:
   pthread_mutex_t data_buffer_mutex;
@@ -46,6 +49,7 @@ class dataBuffer
   int samplesToCopy;
   int index_copy_start;
   int copyAtEnd;
+  int sampling_rate; // in Hz;
   
 };
 

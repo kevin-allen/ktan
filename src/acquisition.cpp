@@ -911,6 +911,9 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   // some impedance stuff
   //impedanceFreqValid = false;
   //updateImpedanceFrequency();
+
+
+  db->set_sampling_rate(evalBoard->getSampleRate());
   
 #ifdef DEBUG_ACQ
   cerr << "leave acquisition::changeSampleRate()\n";
