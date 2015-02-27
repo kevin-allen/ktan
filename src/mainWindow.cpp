@@ -22,11 +22,6 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 #endif
 
   cerr << "entering mainWindow::mainWindow()\n";
-  db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
-  acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
-  rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
-  osc = new oscilloscope(db);
-  num_channels=32;
   
   // get the widget from builder
   builder->get_widget("play_toolbutton",play_toolbutton);
@@ -58,6 +53,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("osc_group_preference_spinbutton",osc_group_preference_spinbutton);
   builder->get_widget("osc_group_treeview",osc_group_treeview);
   builder->get_widget("osc_all_channels_treeview",osc_all_channels_treeview);
+  builder->get_widget("drawing_area",drawing_area);
 
   
   // connect signals to functions
@@ -80,6 +76,16 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   recording_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_recording_menuitem_activate));
   group_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_group_spinbutton_value_changed));
   osc_group_preference_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_osc_group_preference_spinbutton_value_changed));
+
+
+
+
+  db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
+  acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
+  rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
+  osc = new oscilloscope(db,drawing_area);
+  num_channels=32;
+
   
   // // start data acquisition on the board
   //  acq->start_acquisition();

@@ -21,7 +21,7 @@
 #define OSCILLOSCOPE_PIXELS_PER_DATA_POINT_TO_DRAW 1 // integer ranging from 1 to 10, to reduce drawing time
 #define OSCILLOSCOPE_MAX_SAMPLING_RATE 60000
 #define TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR 2
-
+#define OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA 5000 // the x resolution of the scree should be lower than this number
 #define OSC_TIME_BETWEEN_UPDATE_MS 20
 #include <string>
 #include "timeKeeper.h"
@@ -37,7 +37,7 @@ class oscilloscope
 {
 
  public:
-  oscilloscope(dataBuffer* datab);
+  oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da);
   ~oscilloscope();
   bool start_oscilloscope();
   bool stop_oscilloscope();
@@ -65,6 +65,7 @@ class oscilloscope
   bool is_displaying; // oscilloscope active
   bool draw_only_mean;
   timeKeeper tk;
+  Gtk::DrawingArea* drawing_area;
 
   // 3 buffers to have simpler functions
   double* buffer;

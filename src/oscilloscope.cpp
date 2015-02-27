@@ -13,13 +13,14 @@
 #include <glibmm.h>
 
 
-oscilloscope::oscilloscope(dataBuffer* datab)
+oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
 {
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::oscilloscope()\n";
 #endif
 
   db=datab;
+  drawing_area=da;
   // Allocate memory for an internal buffer that can be used by other objects 
   buffer_size= OSC_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS; // to rewind
   buffer = new double [buffer_size];
@@ -251,10 +252,11 @@ int oscilloscope::show_data(int page)
   struct timespec beginning_drawing,end_drawing,drawing_duration,data_crunch_end,data_crunch_duration,  rec; 
   int i,j,k;
   // do all the drawing here
-  cairo_t * cr;
+  Cairo::RefPtr<Cairo::Context> cr;
+  Gtk::Allocation allocation;
   cairo_t * buffer_cr;
-  cairo_surface_t *buffer_surface;
-  cairo_surface_t *drawable_surface;
+  Cairo::RefPtr<Cairo::Surface> drawable_surface;
+  Cairo::RefPtr<Cairo::Surface> buffer_surface;
   int width_start, height_start;
   int vertical_channel_space;
   int horizontal_channel_space;
@@ -274,12 +276,37 @@ int oscilloscope::show_data(int page)
     }
 
   fill_show_buffer(page);
-      
   
+  allocation = drawing_area->get_allocation();
+  cr = drawing_area->get_window()->create_cairo_context();
+  width_start = allocation.get_width();
+  height_start = allocation.get_height();
+
+  if(width_start>OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA)
+    {
+      cerr << "oscilloscope::show_data: width of drawing_area is larger than OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA\n";
+      return -1;
+    }
+
+  drawable_surface = cr->get_target();
+
+  
+  // need to make a copy of surface for a smoother oscilloscope
 
 
+  // get the vertical space allocated for each channel in the current group
+  vertical_channel_space=(height_start - y_margin_top - y_margin_bottom)/grp_for_display.get_num_channels();
+  horizontal_channel_space=width_start-x_margin_left-x_margin_right;
+  x_pixels_to_draw=horizontal_channel_space/pixels_per_data_point_to_draw; // to reduce drawing time, and x resolution.
+  data_points_per_x_pixel=(double)samples_per_page/x_pixels_to_draw;
+  pixels_per_data_point=(double)x_pixels_to_draw/samples_per_page;
 
 
+  cr->set_source_rgb(0.9, 0.9, 0.9);
+  cr->paint();
+
+
+  return 0;
 
 
 

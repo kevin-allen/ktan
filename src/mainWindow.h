@@ -70,6 +70,9 @@ class mainWindow: public Gtk::Window
   sigc::slot<bool> tslot;
   sigc::connection statusbar_timeout_connection; // for timeout
    
+  Gtk::DrawingArea* drawing_area;
+
+
   string date_string;
 
 
