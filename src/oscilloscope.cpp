@@ -23,8 +23,6 @@ oscilloscope::oscilloscope(dataBuffer* datab)
   // Allocate memory for an internal buffer that can be used by other objects 
   buffer_size= OSC_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS; // to rewind
   buffer = new double [buffer_size];
-  transfer_buffer_size=OSC_TRANSFER_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS;
-  transfer_buffer= new double [transfer_buffer_size];
   show_buffer_size =  OSC_SHOW_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS;
   show_buffer = new double [show_buffer_size];
 
@@ -33,23 +31,59 @@ oscilloscope::oscilloscope(dataBuffer* datab)
   draw_only_mean=false;
   
   num_channels=db->getNumChannels();
+  all_channels_list = new unsigned int [num_channels];
+  for(int i = 0; i < num_channels;i++)
+    all_channels_list[i]=i;
+
   num_groups= OSC_GROUPS;
   max_channels_per_group = MAX_CHANNELS_PER_GROUP;
   grp = new channelGroup[num_groups];
   current_group=0;
   set_channel_group_default();
   sampling_rate=db->get_sampling_rate();
+  seconds_per_page=OSCILLOSCOPE_DEFAULT_TIME_SEC_IN_PAGE;
+  gui_seconds_per_page=seconds_per_page;
+  samples_per_page=sampling_rate*seconds_per_page;
+  page_size=samples_per_page*num_channels;
+  num_pages_buffer=buffer_size/page_size;
+  current_page=0;
+  pages_in_memory=0;
+  displayed_pages=0;
+  pixels_per_data_point_to_draw=OSCILLOSCOPE_PIXELS_PER_DATA_POINT_TO_DRAW;
+  x_margin_left=OSCILLOSCOPE_X_MARGIN_LEFT;
+  x_margin_right=OSCILLOSCOPE_X_MARGIN_RIGHT;
+  y_margin_top=OSCILLOSCOPE_Y_MARGIN_TOP;
+  y_margin_bottom=OSCILLOSCOPE_Y_MARGIN_BOTTOM;
 
+  x_axis_data= new double[OSCILLOSCOPE_MAX_SAMPLING_RATE*MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE];
+  for (int i=0; i<OSCILLOSCOPE_MAX_SAMPLING_RATE*MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE;i++)
+    x_axis_data[i]=i;
+  
   max_samples_buffer=buffer_size/num_channels;
-  max_samples_transfer_buffer= transfer_buffer_size/num_channels;
-  number_samples_displayed=0;
-
+  new_samples_buffer=0;
+  num_samples_displayed=0;
+  current_group=0;
+  
+  global_gain=OSCILLOSCOPE_DEFAULT_GAIN;
+  gui_global_gain=global_gain;
+  min_global_gain=OSCILLOSCOPE_MIN_GLOBAL_GAIN;
+  max_global_gain=OSCILLOSCOPE_MAX_GLOBAL_GAIN;
+  global_gain_factor=OSCILLOSCOPE_GLOBAL_GAIN_CHANGE_FACTOR;
+  
   // for timer
   tslot = sigc::mem_fun(*this, &oscilloscope::on_timeout);
   
 
 #ifdef DEBUG_OSC
+  cerr << "osc sampling_rate: " << sampling_rate << '\n';
+  cerr << "osc num_channels: " << num_channels << '\n';
+  cerr << "osc seconds_per_page: " << seconds_per_page << '\n';
+  cerr << "osc samples_per_page: " << samples_per_page << '\n';
+  cerr << "osc page size: " << page_size << '\n';
+  cerr << "osc buffer size: " << buffer_size << '\n';
+  cerr << "osc num_pages_buffer: " << num_pages_buffer << '\n';
   cerr << "leaving oscilloscope::oscilloscope()\n";
+
 #endif
 }
 
@@ -59,9 +93,9 @@ oscilloscope::~oscilloscope()
   cerr << "entering oscilloscope::~oscilloscope()\n";
 #endif
   delete[] buffer;
-  delete[] transfer_buffer;
   delete[] show_buffer;
   delete[] grp;
+  delete[] all_channels_list;
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::~oscilloscope()\n";
 #endif
@@ -69,20 +103,255 @@ oscilloscope::~oscilloscope()
 
 bool oscilloscope::on_timeout()
 {
-  #ifdef DEBUG_OSC
+#ifdef DEBUG_OSC
   cerr << "entering oscilloscope::on_timeout()\n";
 #endif
+  if(is_displaying==false)
+    { 
+      return false;
+    }
+  if(is_drawing==true)
+    { // only once at a time
+      return true;
+    }
+  is_drawing==true;
 
+  // get a copy of the display group so that any change during 
+  // the displaying process does not cause segmentation faults
+  // so for displaying use grp_for_display
+  grp[current_group].copy_channelGroup(grp_for_display);
+  
+  
+  // gui can affect time and gain only when this function is called
+  // prevent gui changes from affecting drawing until it is completed
+  update_time_gain();
+  
+  // transfer data from db to buffer
+  if(get_data()<0)
+    {
+      cerr << "oscilloscope::on_timeout(), problem getting new data\n";
+      reset();
+    }
+  
+  // display the new data if we have a complete page to show
+  show_new_data();
+
+  
+  is_drawing==false;
+  
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::on_timeout()\n";
 #endif
   return true;
 }
+
+void oscilloscope::update_time_gain()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::update_time_gain()\n";
+#endif
+  if (seconds_per_page!=gui_seconds_per_page||global_gain!=gui_global_gain)
+    {
+      global_gain=gui_global_gain;
+      seconds_per_page=gui_seconds_per_page;
+      samples_per_page=sampling_rate*seconds_per_page;
+      page_size=samples_per_page*num_channels;
+      num_pages_buffer=buffer_size/page_size;
+      current_page=0;
+      new_samples_buffer=0;
+      num_samples_displayed=db->get_number_samples_read();
+      pages_in_memory=0;
+    }
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::update_time_gain()\n";
+#endif
+
+}
+
+void oscilloscope::increase_gain()
+{
+  
+}
+void oscilloscope::decrease_gain()
+{
+  
+}
+void oscilloscope::increase_time_shown()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::increase_time_shown()\n";
+#endif
+
+  if(gui_seconds_per_page/TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR>=MIN_TIME_SEC_IN_OSCILLOSCOPE_PAGE)
+    {
+      gui_seconds_per_page=gui_seconds_per_page/TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR;
+    }
+#ifdef DEBUG_OSC
+  cerr << "new gui_seconds_per_page: " << gui_seconds_per_page << '\n';
+  cerr << "leaving oscilloscope::increase_time_shown()\n";
+#endif
+
+}
+void oscilloscope::decrease_time_shown()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::decrease_time_shown()\n";
+#endif
+   if(gui_seconds_per_page*TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR<=MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE)
+    {
+      gui_seconds_per_page=gui_seconds_per_page*TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR;
+    }
+#ifdef DEBUG_OSC
+   cerr << "new gui_seconds_per_page: " << gui_seconds_per_page << '\n';
+  cerr << "entering oscilloscope::decrease_time_shown()\n";
+#endif
+}
+
+void oscilloscope::refresh()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::refresh()\n";
+#endif
+
+
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::refresh()\n";
+#endif
+}
+int oscilloscope::show_data(int page)
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::show_data()\n";
+#endif
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::show_data()\n";
+#endif
+
+}
+int oscilloscope::show_new_data()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::show_new_data()\n";
+#endif
+  // only show when there is a new full page
+  if (new_samples_buffer!=samples_per_page)
+    {
+      cerr << "no new page to show\n";
+      return 0;
+    }
+  
+  
+  // show the current page
+  show_data(current_page);
+
+  // adjust some variable
+  num_samples_displayed+=samples_per_page;
+  new_samples_buffer=0;
+  if(current_page<num_pages_buffer-1)
+    current_page++;
+  else
+    current_page=0;
+  if(pages_in_memory<num_pages_buffer-1)
+    pages_in_memory++;
+  
+#ifdef DEBUG_OSC
+  cerr << "current_page: " << current_page << "\n";
+  cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
+#endif
+
+  
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::show_new_data()\n";
+#endif
+  return 0;
+
+}
+
+
+int oscilloscope::get_data()
+ {
+   /************************************************
+     buffer is divided in pages and we only read
+     a page at a time and avoid wrap around buffer
+   ************************************************/
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::get_data()\n";
+#endif
+
+  // 1. exit here if no new data available
+  long int new_samples_available=db->get_number_samples_read()-(num_samples_displayed+new_samples_buffer);
+  if(new_samples_available<=0)
+    {
+      // no new data available
+      return 0;
+    }
+  // 2. check how many samples we would need to complete the page
+  int samples_to_complete_page=samples_per_page-new_samples_buffer;
+  unsigned long int first_sample = num_samples_displayed+new_samples_buffer;
+
+#ifdef DEBUG_OSC
+  cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
+  cerr << "db->get_number_samples_read(): " << db->get_number_samples_read() << '\n';
+  cerr << "new_samples_buffer: " << new_samples_buffer << '\n';
+  cerr << "new samples available: " << new_samples_available << '\n';
+  cerr << "samples_to_complete_page: " << samples_to_complete_page << '\n';
+  cerr << "first_sample: " << first_sample << '\n';
+
+  
+#endif
+
+
+  // 3. read the new data, maximum up to complete the current page, all channels
+  buffer_ptr=buffer+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
+  int samples_returned=db->getNewData(first_sample,buffer_ptr,samples_to_complete_page,num_channels,all_channels_list);
+  if(samples_returned<0)
+    {
+      cerr << "oscilloscope::get_data(), problem getting new data\n";
+      return -1;
+    }
+  
+  new_samples_buffer=new_samples_buffer+samples_returned;
+
+
+#ifdef DEBUG_OSC
+  cerr << "samples_returned: " << samples_returned << '\n';
+  cerr << "new_samples_buffer: " << new_samples_buffer << '\n';
+  cerr << "leaving oscilloscope::get_data()\n";
+#endif
+  return 0;
+}
+
+
+
+void oscilloscope::reset()
+{
+  #ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::reset()\n";
+#endif
+
+  samples_per_page=sampling_rate*seconds_per_page;
+  num_channels=db->getNumChannels();
+  page_size=samples_per_page*num_channels;
+  num_pages_buffer=buffer_size/(num_channels*samples_per_page);
+  max_samples_buffer=buffer_size/num_channels;
+  current_page=0;
+  new_samples_buffer=0; // undisplayed data
+  num_samples_displayed=db->get_number_samples_read();
+  pages_in_memory=0;
+  displayed_pages=0;
+
+#ifdef DEBUG_OSC
+  cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
+  cerr << "leaving oscilloscope::reset()\n";
+#endif
+}
+
 bool oscilloscope::start_oscilloscope()
 {
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::start_oscilloscope()\n";
 #endif
+  reset();
   is_displaying=true;
   timeout_connection = Glib::signal_timeout().connect(tslot,OSC_TIME_BETWEEN_UPDATE_MS); 
 #ifdef DEBUG_OSC
@@ -115,8 +384,12 @@ void oscilloscope::set_channel_group_default()
     {
       grp[i].set_num_channels(DEFAULT_CHANNELS_PER_GROUP);
       for(int j = 0; j < DEFAULT_CHANNELS_PER_GROUP; j++)
-	grp[i].set_channel_id(j,i*DEFAULT_CHANNELS_PER_GROUP+j);
+	{
+	  grp[i].set_channel_id(j,i*DEFAULT_CHANNELS_PER_GROUP+j);
+	  grp[i].set_colours(j,1.0,0,0);
+	}
     }
+  
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::set_channel_group_default()\n";
 #endif
@@ -147,6 +420,13 @@ bool oscilloscope::get_is_displaying()
       return;
     }
   current_group=g;
+  
+  if(is_displaying==false)
+    {
+      refresh();
+    }
+
+
 }
 
 channelGroup* oscilloscope::get_one_channel_group(int g)

@@ -16,6 +16,9 @@ channelGroup::channelGroup()
   num_channels=0;
   max_num_channels=MAX_CHANNELS_PER_GROUP;
   channel_list = new int[max_num_channels];
+  blue = new double[max_num_channels];
+  red = new double[max_num_channels];
+  green = new double[max_num_channels];
 #ifdef DEBUG_GRP
   cerr << "leaving channelGroup::channelGroup()\n";
 #endif
@@ -26,6 +29,9 @@ channelGroup::~channelGroup()
   cerr << "entering channelGroup::~channelGroup()\n";
 #endif
   delete[] channel_list;
+  delete[] blue;
+  delete[] red;
+  delete[] green;
 #ifdef DEBUG_GRP
   cerr << "entering channelGroup::~channelGroup()\n";
 #endif
@@ -99,4 +105,45 @@ int channelGroup::get_channel_id(int index)
     }
 
   return channel_list[index];
+}
+void channelGroup::set_colours(int index, double b, double r, double g)
+{
+  if(index<0)
+    {
+      cerr << "channelGroup::set_colours, index is out of range: " << index << "\n";
+      return;
+    }
+  if(index>num_channels)
+    {
+      cerr << "channelGroup::set_colours, index is out of range: " << num_channels << "\n";
+      return;
+    }
+
+  if(b<0||b>1)
+    {
+      cerr << "channelGroup::set_colours, b is out of range: " << b << "\n";
+      return;
+    }
+  if(r<0||r>1)
+    {
+      cerr << "channelGroup::set_colours, b is out of range: " << r << "\n";
+      return;
+    }
+  if(g<0||g>1)
+    {
+      cerr << "channelGroup::set_colours, b is out of range: " << g << "\n";
+      return;
+    }
+  blue[index]=b;
+  red[index]=r;
+  green[index]=g;
+}
+
+void channelGroup::copy_channelGroup(channelGroup &grp)
+{
+  grp.set_num_channels(num_channels);
+  for(int i = 0;i < num_channels;i++)
+    {
+      grp.set_channel_id(i,channel_list[i]);
+    }
 }

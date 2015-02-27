@@ -29,11 +29,12 @@ class dataBuffer
   void setNumChannels(int numChannels);
   int getNumChannels();
   void addNewData(int numSamples,short int* data);
-  int getNewData(int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
+  int getNewData(unsigned long int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
+  int getNewData(unsigned long int firstSample,double* data, int maxSamples, int numChannels, unsigned int* channelList);
   void resetData();
   void set_sampling_rate(int sr);
   int get_sampling_rate();
-  
+  unsigned long int get_number_samples_read();
   
  private:
   pthread_mutex_t data_buffer_mutex;

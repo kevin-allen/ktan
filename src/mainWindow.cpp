@@ -345,7 +345,7 @@ void mainWindow::on_time_increase_toolbutton_clicked()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_time_increase_toolbutton_clicked()\n";
 #endif
-
+  osc->increase_time_shown();
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_time_increase_toolbutton_clicked()\n";
 #endif  
@@ -355,7 +355,7 @@ void mainWindow::on_time_decrease_toolbutton_clicked()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_time_decrease_toolbutton_clicked()\n";
 #endif
-
+  osc->decrease_time_shown();
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_time_decrease_toolbutton_clicked()\n";
 #endif

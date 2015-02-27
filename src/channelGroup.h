@@ -18,15 +18,19 @@ class channelGroup
   void set_channel_list(int numChannels, int* channelList);
   void set_channel_id(int index, int id);
   void set_num_channels(int nc);
+  void set_colours(int index, double b, double r, double g);
   int get_num_channels();
   int get_max_num_channels();
   int get_channel_id(int index);
-
+  void copy_channelGroup(channelGroup &grp);
 
  private:
   int num_channels;
   int max_num_channels;
-  int * channel_list;    
+  int* channel_list;    
+  double* blue;
+  double* red;
+  double* green;
 };
 
 
