@@ -218,11 +218,71 @@ void oscilloscope::refresh()
   cerr << "leaving oscilloscope::refresh()\n";
 #endif
 }
+
+int oscilloscope::fill_show_buffer(int page)
+{
+  // in the show buffer all the data
+  // from one channel are next to each
+  // other 
+
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::fill_show_buffer()\n";
+#endif
+
+  page_ptr=buffer+(page*samples_per_page*num_channels);
+  for(int i =0; i < grp_for_display.get_num_channels();i++)
+    for(int j =0; j < samples_per_page; j++)
+      show_buffer[(samples_per_page*i)+j]=
+	page_ptr[(num_channels*j)+grp_for_display.get_channel_id(i)]*global_gain;
+    
+
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::fill_show_buffer()\n";
+#endif
+
+}
+
 int oscilloscope::show_data(int page)
 {
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::show_data()\n";
 #endif
+// to get an idea of drawing time
+  struct timespec beginning_drawing,end_drawing,drawing_duration,data_crunch_end,data_crunch_duration,  rec; 
+  int i,j,k;
+  // do all the drawing here
+  cairo_t * cr;
+  cairo_t * buffer_cr;
+  cairo_surface_t *buffer_surface;
+  cairo_surface_t *drawable_surface;
+  int width_start, height_start;
+  int vertical_channel_space;
+  int horizontal_channel_space;
+  int start_index,end_index; // to get the min and max y value for each x coordinate from 0 to horizontal_channel_space
+  double data_points_per_x_pixel;
+  double pixels_per_data_point;
+  int x_pixels_to_draw;
+  clock_gettime(CLOCK_REALTIME, &beginning_drawing);
+
+
+  if(grp_for_display.get_num_channels()<1)
+    {
+#ifdef DEBUG_OSC
+      cerr << "oscilloscope::show_data(), no channel to draw\n";
+#endif
+      return 0;
+    }
+
+  fill_show_buffer(page);
+      
+  
+
+
+
+
+
+
+
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::show_data()\n";
 #endif
@@ -236,7 +296,6 @@ int oscilloscope::show_new_data()
   // only show when there is a new full page
   if (new_samples_buffer!=samples_per_page)
     {
-      cerr << "no new page to show\n";
       return 0;
     }
   

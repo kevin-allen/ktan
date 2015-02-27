@@ -69,6 +69,7 @@ class oscilloscope
   // 3 buffers to have simpler functions
   double* buffer;
   double* buffer_ptr;
+  double* page_ptr;
   double* show_buffer;
   unsigned int* all_channels_list;
   int buffer_size;
@@ -109,6 +110,7 @@ class oscilloscope
   int get_data();
   int show_new_data();
   int show_data(int page);
+  int fill_show_buffer(int page);
   void update_time_gain();
   
   double global_gain;
