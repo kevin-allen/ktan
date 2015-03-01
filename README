@@ -1,4 +1,4 @@
-Copyright (C) 2013 Kevin Allen
+Copyright (C) 2015 Kevin Allen
 
 This file is part of ktan.
 
@@ -7,11 +7,19 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-you need to install:
+
+ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies.  The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Fredora 19 or later vesions.
+
+Here are some of ktan's features:
+
+1) Can record up to at least 64 channels (depending on hardware).
+2) User can rewind the oscilloscope to re-examined recently acquired signals.
+3) Independent threads for acquisition, recording and oscilloscope to take advantage of multi-core processors.
+4) Control recording and visualize data from a remote computer via ssh (-X). 
+
+To compile ktan, you need to install the gtkmm30 package:
 yum install gtkmm30-devel.x86_64
 
-
-If you are using ktan for research purposes and get to publish the data, please be kind enough to refer to ktan. 
 
 To install: ./autogen.sh;./configure; make; su -; make install
 
@@ -19,7 +27,9 @@ If you are using a primitive version of the software, make sure that you have in
 
 cp 60-opalkelly.rules /etc/udev/rules.d/
 
-
 In the directory with the compiled program, you will need 2 files
 main.bit
 libokFrontPanel.so
+
+
+If you are using ktan for research purposes and get to publish the data, please be kind enough to refer to ktan. 
