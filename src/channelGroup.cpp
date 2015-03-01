@@ -1,4 +1,4 @@
-#define DEBUG_GRP
+//#define DEBUG_GRP
 #include "channelGroup.h"
 #include <stdlib.h> 
 #include <stdint.h>

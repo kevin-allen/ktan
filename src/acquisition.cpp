@@ -1173,8 +1173,7 @@ int acquisition::move_to_dataBuffer()
 	      for (stream = 0; stream < numStreams; ++stream) 
 		{ 
 		  //          (        sample no                  )*   total number channels  + channel no
-		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (32*numStreams) +   (channel*stream+channel) ] =
-		    (dataQueue.front().amplifierData[stream][channel][sample] - 32768);
+		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (32*numStreams) +   (channel*stream+channel) ] = 0 - (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
 		  // multiply by 0.195 to get microvolt
 		  // if(channel<1)
 		  // cout << channel << " " << dataQueue.front().amplifierData[stream][channel][sample] - 32768 << '\n';
