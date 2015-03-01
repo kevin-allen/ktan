@@ -170,6 +170,9 @@ int main (int argc, char *argv[])
   mainWindow* window =0; // defined in mainWindow.h and .cpp
   refBuilder->get_widget_derived("window",window);
 
+  // abort the window if the board is not correctly detected
+  if(window->get_board_is_there()==false)
+    return 0;
   app->run(*window);
 
   delete window;

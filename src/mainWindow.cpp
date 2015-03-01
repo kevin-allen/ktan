@@ -21,9 +21,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   cerr << "entering mainWindow::mainWindow()\n";
 #endif
 
-  cerr << "entering mainWindow::mainWindow()\n";
-  
-  // get the widget from builder
+    // get the widget from builder
   builder->get_widget("play_toolbutton",play_toolbutton);
   builder->get_widget("record_toolbutton",record_toolbutton);
   builder->get_widget("rewind_toolbutton",rewind_toolbutton);
@@ -79,9 +77,25 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
   window->signal_hide().connect(sigc::mem_fun(*this, &mainWindow::on_hide));
 
+  db=NULL;
+  acq=NULL;
+  rec=NULL;
+  osc=NULL;
 
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
   acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
+
+  board_is_there=false;
+  if(acq->get_set_successfully()==false)
+    {
+      cerr << "Problem setting the acquisition board\n";
+      delete db;
+      delete acq;
+      db=NULL;
+      acq=NULL;
+      return;
+    }
+  board_is_there==true;
   rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
   osc = new oscilloscope(db,drawing_area);
   num_channels=32;
@@ -137,10 +151,14 @@ mainWindow::~mainWindow()
   cerr << "entering mainWindow::~mainWindow()\n";
 #endif
 
-  delete acq;
-  delete rec;
-  delete osc;
-  delete db;
+  if(acq!=NULL)
+    delete acq;
+  if(rec!=NULL)
+    delete rec;
+  if(osc!=NULL)
+    delete osc;
+  if(db!=NULL)
+    delete db;
 
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::~mainWindow()\n";
@@ -148,7 +166,10 @@ mainWindow::~mainWindow()
 
 }
 
-
+bool mainWindow::get_board_is_there()
+{
+  return board_is_there;
+}
 
 void mainWindow::on_play_toolbutton_toggled()
 {

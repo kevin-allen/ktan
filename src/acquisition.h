@@ -30,6 +30,7 @@ class acquisition
   bool stop_acquisition();
   bool get_is_acquiring();
   int get_number_channels();
+  bool get_set_successfully();
   static void *acquisition_thread_helper(void *context) // helper function to start the new thread
   {
     ((acquisition *)context)->acquisition_thread_function();
@@ -42,7 +43,7 @@ class acquisition
   Rhd2000EvalBoard *evalBoard;
   int errorCode;
   bool fastSettleEnabled;
-  
+  bool set_successfully;
   // amplifier settings 
   double desiredDspCutoffFreq;
   double actualDspCutoffFreq;
@@ -54,7 +55,7 @@ class acquisition
 
 
   void settingAmp();
-  void openBoardBit();
+  bool openBoardBit();
   double desiredImpedanceFreq;
   double actualImpedanceFreq;
   bool impedanceFreqValid;

@@ -13,6 +13,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::acquisition()\n";
 #endif
+  set_successfully=false;
 
   db=dbuffer; // get the address of the data buffer
   localBuffer=NULL;
@@ -66,7 +67,12 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
 
   evalBoard = new Rhd2000EvalBoard;
-  openBoardBit();
+
+  if(openBoardBit()==false)
+    {
+      cerr << "acquisition::acquisition(), problem opening the board\n";
+      return ;
+    }
   
   /*************************************
    code to be replaced by minimal code 
@@ -97,6 +103,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
   pause_restart_acquisition_thread_ms=100;
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
     
+  
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
@@ -129,7 +136,7 @@ acquisition::~acquisition()
 #endif
 }
 
-void acquisition::openBoardBit()
+bool acquisition::openBoardBit()
 {
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::openBoardBit()\n";
@@ -137,7 +144,6 @@ void acquisition::openBoardBit()
 
   // Open Opal Kelly XEM6010 board.
   errorCode = evalBoard->open();
-  cerr << "errorCode: " << errorCode << "\n";
   if (errorCode < 1) 
     {
       if (errorCode == -1) 
@@ -149,33 +155,39 @@ void acquisition::openBoardBit()
   	{
   	  cerr << "Intan RHD2000 USB Interface Board Not Found\n";
   	}
-      delete evalBoard;
       evalBoard = 0;
-      return;
+      return false;
     }
   // Load Rhythm FPGA configuration bitfile (provided by Intan Technologies).
   string bitfilename ="main.bit";
   if (!evalBoard->uploadFpgaBitfile(bitfilename)) {
     cerr << "FPGA Configuration File Upload Error\n";
     cerr << "Cannot upload configuration file to FPGA.  Make sure file main.bit is in the same directory as the executable file.\n";
-    return;
+    return false;
   }
   
   // Initialize interface board.
   evalBoard->initialize();
-  cerr << "board sampling rate: " << evalBoard->getSampleRate() << " Hz\n";
+
   
+
 #ifdef DEBUG_ACQ
+    cerr << "board sampling rate: " << evalBoard->getSampleRate() << " Hz\n";
   cerr << "leaving acquisition::openBoardBit()\n";
 #endif
 
-
+  return true;
 
 }
 int acquisition::get_number_channels()
 {
   return totalNumChannels;
 }
+bool acquisition::get_set_successfully()
+{
+  return set_successfully;
+}
+
 
 void acquisition::settingAmp()
 {

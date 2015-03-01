@@ -21,11 +21,12 @@ class mainWindow: public Gtk::Window
   pthread_t recording_thread;
   int recording_thread_id;
   int num_channels;
+  bool board_is_there;
   
  public:
   mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);//constructor
   virtual ~mainWindow();
-  
+  bool get_board_is_there();
  protected:
   Glib::RefPtr<Gtk::Builder> builder;
 
