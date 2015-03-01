@@ -49,7 +49,7 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   num_pages_buffer=buffer_size/page_size;
   current_page=0;
   pages_in_memory=0;
-  displayed_pages=0;
+  displayed_page=0;
   pixels_per_data_point_to_draw=OSCILLOSCOPE_PIXELS_PER_DATA_POINT_TO_DRAW;
   x_margin_left=OSCILLOSCOPE_X_MARGIN_LEFT;
   x_margin_right=OSCILLOSCOPE_X_MARGIN_RIGHT;
@@ -124,16 +124,19 @@ bool oscilloscope::on_timeout()
       return true;
     }
   is_drawing==true;
-
-  // get a copy of the display group so that any change during 
-  // the displaying process does not cause segmentation faults
-  // so for displaying use grp_for_display
-  grp[current_group].copy_channelGroup(grp_for_display);
   
   
   // gui can affect time and gain only when this function is called
   // prevent gui changes from affecting drawing until it is completed
   update_time_gain();
+
+
+  // get a copy of the display group so that any change during 
+  // the displaying process does not cause segmentation faults
+  // so for displaying use grp_for_display
+  grp[current_group].copy_channelGroup(grp_for_display);
+
+
   
   // transfer data from db to buffer
   if(get_data()<0)
@@ -234,7 +237,9 @@ void oscilloscope::refresh()
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::refresh()\n";
 #endif
-
+  
+  grp[current_group].copy_channelGroup(grp_for_display);
+  show_data(displayed_page); 
 
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::refresh()\n";
@@ -417,15 +422,10 @@ int oscilloscope::show_data(int page)
   draw_grid(cr);
 
 
-
-
-
-
-
   clock_gettime(CLOCK_REALTIME, &end_drawing);
   drawing_duration=tk.diff(&beginning_drawing,&end_drawing);
-
-
+  displayed_page=page;
+  
 #ifdef DEBUG_OSC
   cerr << "Drawing time : " << drawing_duration.tv_sec*1000+drawing_duration.tv_nsec/1000000.0 << "ms\n";
   cerr << "leaving oscilloscope::show_data()\n";
@@ -453,6 +453,7 @@ int oscilloscope::show_new_data()
   // adjust some variable
   num_samples_displayed+=samples_per_page;
   new_samples_buffer=0;
+  displayed_page=current_page;
   if(current_page<num_pages_buffer-1)
     current_page++;
   else
@@ -460,6 +461,7 @@ int oscilloscope::show_new_data()
   if(pages_in_memory<num_pages_buffer-1)
     pages_in_memory++;
   
+
 #ifdef DEBUG_OSC
   cerr << "current_page: " << current_page << "\n";
   cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
@@ -544,7 +546,7 @@ void oscilloscope::reset()
   new_samples_buffer=0; // undisplayed data
   num_samples_displayed=db->get_number_samples_read();
   pages_in_memory=0;
-  displayed_pages=0;
+  displayed_page=0;
 
 #ifdef DEBUG_OSC
   cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
@@ -615,6 +617,9 @@ bool oscilloscope::get_is_displaying()
 }
  void oscilloscope::set_current_group(int g)
 {
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::set_current_group()\n";
+#endif
   if(g<0)
     {
       cerr << "oscilloscope::set_current_group(int g), g is smaller than 0\n";
@@ -627,12 +632,10 @@ bool oscilloscope::get_is_displaying()
     }
   current_group=g;
   
-  if(is_displaying==false)
-    {
-      refresh();
-    }
-
-
+  refresh();
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::set_current_group(), group set to " << current_group << "\n";
+#endif
 }
 
 channelGroup* oscilloscope::get_one_channel_group(int g)
@@ -737,4 +740,72 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
   cr->stroke();
   cr->set_line_width(1.0);
 
+}
+ void oscilloscope::show_previous_page()
+ {
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::show_previous_page()\n";
+#endif
+  int page;
+  // by default, show the page currently on displayed
+  page=displayed_page;
+  
+  if(displayed_page<current_page)
+    {
+      if(displayed_page>0&&current_page-displayed_page<pages_in_memory )
+	{
+	  page=displayed_page-1;
+	}
+      if(displayed_page==0)
+	{
+	  if(num_pages_buffer-1>current_page && pages_in_memory>current_page)
+	    {
+	      page=num_pages_buffer-1;
+	    }
+	}
+    }                                                     
+  if(displayed_page-1>current_page && current_page+(num_pages_buffer-displayed_page)<pages_in_memory)
+    {
+      page=displayed_page-1;
+    }
+
+#ifdef DEBUG_OSC
+  fprintf(stderr,"show page %d\n", page);
+#endif
+  show_data(page);
+  
+
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::show_previous_page()\n";
+#endif
+}
+ void oscilloscope::show_next_page()
+ {
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::show_next_page()\n";
+#endif
+  // by default, show the page currently on displayed
+  int page=displayed_page;
+  if(displayed_page+1<current_page)
+    {
+      page=displayed_page+1;
+    }
+  if(displayed_page>current_page)
+    {
+      if (displayed_page+2<num_pages_buffer)
+	page=displayed_page+1;
+      else
+	page=0;
+    }
+
+#ifdef DEBUG_OSC
+  fprintf(stderr,"show page %d\n", page);
+#endif
+
+
+  show_data(page);
+  
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::show_next_page()\n";
+#endif
 }

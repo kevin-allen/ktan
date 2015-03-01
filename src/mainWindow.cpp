@@ -310,7 +310,7 @@ void mainWindow::on_rewind_toolbutton_clicked()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_rewind_toolbutton_clicked()\n";
 #endif
-
+  osc->show_previous_page();
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_rewind_toolbutton_clicked()\n";
 #endif
@@ -321,7 +321,7 @@ void mainWindow::on_forward_toolbutton_clicked()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_forward_toolbutton_clicked()\n";
 #endif
-
+  osc->show_next_page();
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_forward_toolbutton_clicked()\n";
 #endif

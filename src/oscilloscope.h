@@ -49,6 +49,9 @@ class oscilloscope
   void decrease_gain();
   void increase_time_shown();
   void decrease_time_shown();
+  void show_previous_page();
+  void show_next_page();
+
 
   channelGroup* get_one_channel_group(int g);
   bool get_is_displaying();
@@ -84,8 +87,7 @@ class oscilloscope
   int max_samples_to_get;
   int ret_get_samples;
   unsigned long int num_samples_displayed;
-  int displayed_pages;
-  
+  int displayed_page;
   
   double seconds_per_page;
   int samples_per_page;
