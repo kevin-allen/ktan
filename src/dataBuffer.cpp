@@ -204,14 +204,17 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
 
   // number of samples to copy
   samplesToCopy=number_samples_read-firstSample;
-  if(samplesToCopy>maxSamples)
-    samplesToCopy=maxSamples;
-
-  // find index first sample, last sample read
-  index_copy_start=(index_next_sample)-samplesToCopy;
+  // get index of start of coppy
+  index_copy_start=(index_next_sample)-samplesToCopy; 
   if(index_copy_start<0)
     index_copy_start=max_number_samples_in_buffer+index_copy_start;
 
+  if(samplesToCopy>maxSamples)
+    {
+      samplesToCopy=maxSamples;
+    }
+
+  
 
 #ifdef DEBUG_BUF
   cerr << "number_samples_read: " << number_samples_read << " samplesToCopy: " << samplesToCopy << " index_copy_start: " << index_copy_start << '\n';
@@ -286,15 +289,18 @@ int dataBuffer::getNewData(unsigned long int firstSample, double* data, int maxS
   // prevent changing the buffer while working with it
   pthread_mutex_lock(&data_buffer_mutex);
 
+
   // number of samples to copy
   samplesToCopy=number_samples_read-firstSample;
-  if(samplesToCopy>maxSamples)
-    samplesToCopy=maxSamples;
-
-  // find index first sample, last sample read
-  index_copy_start=(index_next_sample)-samplesToCopy;
+  // get index of start of coppy
+  index_copy_start=(index_next_sample)-samplesToCopy; 
   if(index_copy_start<0)
     index_copy_start=max_number_samples_in_buffer+index_copy_start;
+
+  if(samplesToCopy>maxSamples)
+    {
+      samplesToCopy=maxSamples;
+    }
 
 
 #ifdef DEBUG_BUF
