@@ -54,7 +54,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("osc_group_treeview",osc_group_treeview);
   builder->get_widget("osc_all_channels_treeview",osc_all_channels_treeview);
   builder->get_widget("drawing_area",drawing_area);
-
+  builder->get_widget("window",window);
   
   // connect signals to functions
   play_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_play_toolbutton_toggled));
@@ -77,7 +77,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   group_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_group_spinbutton_value_changed));
   osc_group_preference_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_osc_group_preference_spinbutton_value_changed));
 
-
+  window->signal_hide().connect(sigc::mem_fun(*this, &mainWindow::on_hide));
 
 
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
@@ -797,5 +797,14 @@ void mainWindow::copy_osc_group_tree_model_into_channel_group()
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::copy_osc_group_tree_model_into_channel_group()\n";
 #endif
+
+}
+
+void mainWindow::on_hide()
+{
+#ifdef DEBUG_WIN
+  cerr << " mainWindow::on_hide()\n";
+#endif
+
 
 }

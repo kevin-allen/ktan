@@ -27,6 +27,11 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   show_buffer_size =  OSC_SHOW_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS;
   show_buffer = new double [show_buffer_size];
 
+  blue = new double[OSC_MAXIMUM_CHANNELS];
+  red = new double[OSC_MAXIMUM_CHANNELS];
+  green = new double[OSC_MAXIMUM_CHANNELS];
+
+
   is_drawing=false;
   is_displaying=false;
   draw_only_mean=false;
@@ -41,6 +46,7 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   grp = new channelGroup[num_groups];
   current_group=0;
   set_channel_group_default();
+  set_default_colours();
   sampling_rate=db->get_sampling_rate();
   seconds_per_page=OSCILLOSCOPE_DEFAULT_TIME_SEC_IN_PAGE;
   gui_seconds_per_page=seconds_per_page;
@@ -98,6 +104,10 @@ oscilloscope::~oscilloscope()
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::~oscilloscope()\n";
 #endif
+  
+
+  stop_oscilloscope();
+  
   delete[] buffer;
   delete[] show_buffer;
   delete[] grp;
@@ -105,6 +115,9 @@ oscilloscope::~oscilloscope()
   delete[] y_min_for_pixel_x;
   delete[] y_max_for_pixel_x;
   delete[] mean_for_pixel_x;
+  delete[] blue;
+  delete[] red;
+  delete[] green;
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::~oscilloscope()\n";
 #endif
@@ -338,7 +351,9 @@ int oscilloscope::show_data(int page)
     {
       for (i=0;i<grp_for_display.get_num_channels();i++)
 	{
-	  cr->set_source_rgb(0.2, 0.2, 0.2);
+	  cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
+			     green[grp_for_display.get_channel_id(i)],
+			     blue[grp_for_display.get_channel_id(i)]);
 	  
 	  // get the minimum y and maximum y and mean y for each x coordinate on the screen
 	  for (j=0;j<x_pixels_to_draw;j++)
@@ -396,7 +411,11 @@ int oscilloscope::show_data(int page)
       
       for (i=0;i<grp_for_display.get_num_channels();i++)
 	{
-	  cr->set_source_rgb(0.2, 0.2, 0.2);
+	
+	  cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
+	  		     green[grp_for_display.get_channel_id(i)],
+			     blue[grp_for_display.get_channel_id(i)]);
+	  
 	  // get the minimum y and maximum y and mean y for each x coordinate on the screen
 	  for (j=0;j<samples_per_page;j++)
 	    {
@@ -416,9 +435,6 @@ int oscilloscope::show_data(int page)
     }
   
   
-
-  
-
   draw_grid(cr);
 
 
@@ -572,8 +588,10 @@ bool oscilloscope::stop_oscilloscope()
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::stop_oscilloscope()\n";
 #endif
+  
   timeout_connection.disconnect();
   is_displaying=false;
+  usleep(50000); // allow thread to die
 
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::stop_oscilloscope()\n";
@@ -594,10 +612,73 @@ void oscilloscope::set_channel_group_default()
       for(int j = 0; j < DEFAULT_CHANNELS_PER_GROUP; j++)
 	{
 	  grp[i].set_channel_id(j,i*DEFAULT_CHANNELS_PER_GROUP+j);
-	  grp[i].set_colours(j,1.0,0,0);
 	}
     }
   
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::set_channel_group_default()\n";
+#endif
+}
+
+
+
+void oscilloscope::set_default_colours()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::set_default_colours()\n";
+#endif
+  // set default values in channel groups
+  int grouping=4;
+  int tetrode,remaining;
+  double num_tetrodes=OSC_MAXIMUM_CHANNELS/grouping;
+  for(int i = 0; i < OSC_MAXIMUM_CHANNELS; i++)
+    {
+      tetrode=i/grouping;
+      remaining=tetrode%8;
+      switch(remaining)
+	{
+	case 0:
+	  red[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
+	  green[i]=0.0;
+	  blue[i]=0.8;
+	  break;
+	case 1:
+	  red[i]=0+((double)tetrode/num_tetrodes)*0.8;
+	  green[i]=0.0;
+	  blue[i]=0.8;
+	  break;
+	case 2:
+	  red[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
+	  green[i]=0.8;
+	  blue[i]=0.0;
+	  break;
+	case 3:
+	  red[i]=0+((double)tetrode/num_tetrodes)*0.8;
+	  green[i]=0.8;
+	  blue[i]=0.0;
+	  break;
+	case 4:
+	  red[i]=0.5;
+	  green[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
+	  blue[i]=0.8;
+	  break;
+	case 5:
+	  red[i]=0.5;
+	  green[i]=0+((double)tetrode/num_tetrodes)*0.8;
+	  blue[i]=0.8;
+	  break;
+	case 6:
+	  red[i]=0.3;
+	  green[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
+	  blue[i]=0.3;
+	  break;
+	case 7:
+	  red[i]=0.2;
+	  green[i]=0+((double)tetrode/num_tetrodes)*0.8;
+	  blue[i]=0.5;
+	  break;
+	}
+    }
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::set_channel_group_default()\n";
 #endif

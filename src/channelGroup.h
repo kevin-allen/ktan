@@ -28,9 +28,7 @@ class channelGroup
   int num_channels;
   int max_num_channels;
   int* channel_list;    
-  double* blue;
-  double* red;
-  double* green;
+
 };
 
 

@@ -44,7 +44,8 @@ class mainWindow: public Gtk::Window
   
   Gtk::Button*  add_channel_button;
   Gtk::Button*  remove_channel_button;
-  
+
+  Gtk::Window* window;
 
   Gtk::MenuItem* about_menuitem;
   Gtk::MenuItem* quit_menuitem;
@@ -130,6 +131,7 @@ class mainWindow: public Gtk::Window
   void on_add_channel_button_clicked();
   void on_remove_channel_button_clicked();
   void copy_osc_group_tree_model_into_channel_group();
+  void on_hide();
 
 };
 

@@ -10,8 +10,8 @@
 #define MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE 2
 #define MIN_TIME_SEC_IN_OSCILLOSCOPE_PAGE 0.03125 
 #define OSCILLOSCOPE_DEFAULT_TIME_SEC_IN_PAGE 0.250 // refresh osciloscope every 1 sec
-#define OSCILLOSCOPE_DEFAULT_GAIN 0.00262144
-#define OSCILLOSCOPE_MAX_GLOBAL_GAIN .020
+#define OSCILLOSCOPE_DEFAULT_GAIN 0.02
+#define OSCILLOSCOPE_MAX_GLOBAL_GAIN .080
 #define OSCILLOSCOPE_MIN_GLOBAL_GAIN .0011
 #define OSCILLOSCOPE_GLOBAL_GAIN_CHANGE_FACTOR 1.25
 #define OSCILLOSCOPE_X_MARGIN_LEFT 50
@@ -59,6 +59,10 @@ class oscilloscope
   void refresh();
 
 
+  double* blue;
+  double* red;
+  double* green;
+
 
  private:
   dataBuffer* db;
@@ -97,7 +101,7 @@ class oscilloscope
   int new_samples_buffer;
   int pages_in_memory;
   
-
+  
 
   double* x_axis_data;
   int x_margin_left;
@@ -111,6 +115,7 @@ class oscilloscope
 
   bool on_timeout();
   void set_channel_group_default();
+  void set_default_colours();
   int get_data();
   int show_new_data();
   int show_data(int page);
