@@ -59,6 +59,11 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   x_axis_data= new double[OSCILLOSCOPE_MAX_SAMPLING_RATE*MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE];
   for (int i=0; i<OSCILLOSCOPE_MAX_SAMPLING_RATE*MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE;i++)
     x_axis_data[i]=i;
+
+
+  y_min_for_pixel_x = new double[OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA];
+  y_max_for_pixel_x = new double[OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA];
+  mean_for_pixel_x = new double[OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA];
   
   max_samples_buffer=buffer_size/num_channels;
   new_samples_buffer=0;
@@ -97,6 +102,9 @@ oscilloscope::~oscilloscope()
   delete[] show_buffer;
   delete[] grp;
   delete[] all_channels_list;
+  delete[] y_min_for_pixel_x;
+  delete[] y_max_for_pixel_x;
+  delete[] mean_for_pixel_x;
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::~oscilloscope()\n";
 #endif
@@ -166,16 +174,29 @@ void oscilloscope::update_time_gain()
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::update_time_gain()\n";
 #endif
-
 }
 
 void oscilloscope::increase_gain()
 {
-  
+
+  if(gui_global_gain*global_gain_factor<=max_global_gain)
+    {
+      gui_global_gain=gui_global_gain*global_gain_factor;
+    }
+#ifdef DEBUG_OSC
+  cerr << "gui global gain: " << gui_global_gain << '\n';
+#endif 
 }
 void oscilloscope::decrease_gain()
 {
-  
+ if(gui_global_gain/global_gain_factor>=min_global_gain)
+    {
+      gui_global_gain=gui_global_gain/global_gain_factor;
+    }
+#ifdef DEBUG_OSC
+  cerr << "gui global gain: " << gui_global_gain << '\n';
+#endif
+
 }
 void oscilloscope::increase_time_shown()
 {
@@ -306,13 +327,112 @@ int oscilloscope::show_data(int page)
   cr->paint();
 
 
-  return 0;
+ // for each channel
+  cr->set_line_width(1.0);
+  if(data_points_per_x_pixel>=1) // more than one data point per pixel in the screen
+    {
+      for (i=0;i<grp_for_display.get_num_channels();i++)
+	{
+	  cr->set_source_rgb(0.2, 0.2, 0.2);
+	  
+	  // get the minimum y and maximum y and mean y for each x coordinate on the screen
+	  for (j=0;j<x_pixels_to_draw;j++)
+	    {
+	      start_index=(int)round(j*data_points_per_x_pixel);
+	      end_index=(int)round(start_index+data_points_per_x_pixel);
+	      y_min_for_pixel_x[j]=show_buffer[(samples_per_page*i)+start_index];
+	      y_max_for_pixel_x[j]=show_buffer[(samples_per_page*i)+start_index];
+	      mean_for_pixel_x[j]=0;
+	      for (k=start_index;k<end_index;k++)
+		{
+		  if(y_max_for_pixel_x[j]<show_buffer[(samples_per_page*i)+k])
+		    {
+		      y_max_for_pixel_x[j]=show_buffer[(samples_per_page*i)+k];
+		    }
+		  if(y_min_for_pixel_x[j]>show_buffer[(samples_per_page*i)+k])
+		    {
+		      y_min_for_pixel_x[j]=show_buffer[(samples_per_page*i)+k];
+		    }
+		  mean_for_pixel_x[j]+=show_buffer[(samples_per_page*i)+k];
+		}
+	      mean_for_pixel_x[j]=mean_for_pixel_x[j]/(end_index-start_index);
+	    }
+	  /*to draw the mean */
+	  for (j=1;j<x_pixels_to_draw;j++)
+	    {
+	      if (j==0) 
+	      	{
 
+		  cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
+			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(mean_for_pixel_x[j])));
+	      	}
+	      else
+	      	{
+		  cr->line_to(x_margin_left+j*pixels_per_data_point_to_draw,
+			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(mean_for_pixel_x[j])));
+	      	}
+	    }
+	  if(draw_only_mean==0)
+	    {
+	      /* draw from max to min */
+	      for (j=1;j<x_pixels_to_draw;j++)
+		{
+		  cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
+			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(y_max_for_pixel_x[j])));
+		  cr->line_to(x_margin_left+j*pixels_per_data_point_to_draw,
+			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(y_min_for_pixel_x[j])));
+		}
+	    }
+	  cr->stroke();
+	}
+    }
+  else // less than a data point per pixel in the screen
+    {
+      
+      for (i=0;i<grp_for_display.get_num_channels();i++)
+	{
+	  cr->set_source_rgb(0.2, 0.2, 0.2);
+	  // get the minimum y and maximum y and mean y for each x coordinate on the screen
+	  for (j=0;j<samples_per_page;j++)
+	    {
+	      if (j==0) 
+	      	{
+		  cr->move_to(x_margin_left+j*pixels_per_data_point,
+			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+show_buffer[(samples_per_page*i)+j]));
+	      	}
+	      else
+	      	{
+		  cr->line_to(x_margin_left+j*pixels_per_data_point,
+			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+show_buffer[(samples_per_page*i)+j]));
+	      	}
+	    }
+	  cr->stroke();
+	}
+    }
+  
+ 
+
+  
+
+
+
+
+
+
+
+
+
+  clock_gettime(CLOCK_REALTIME, &end_drawing);
+  drawing_duration=tk.diff(&beginning_drawing,&end_drawing);
 
 
 #ifdef DEBUG_OSC
+  cerr << "Drawing time : " << drawing_duration.tv_sec*1000+drawing_duration.tv_nsec/1000000.0 << "ms\n";
   cerr << "leaving oscilloscope::show_data()\n";
 #endif
+
+  return 0;
+
 
 }
 int oscilloscope::show_new_data()

@@ -10,9 +10,9 @@
 #define MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE 2
 #define MIN_TIME_SEC_IN_OSCILLOSCOPE_PAGE 0.03125 
 #define OSCILLOSCOPE_DEFAULT_TIME_SEC_IN_PAGE 1 // refresh osciloscope every 1 sec
-#define OSCILLOSCOPE_DEFAULT_GAIN .10
-#define OSCILLOSCOPE_MAX_GLOBAL_GAIN 1
-#define OSCILLOSCOPE_MIN_GLOBAL_GAIN .001
+#define OSCILLOSCOPE_DEFAULT_GAIN .01
+#define OSCILLOSCOPE_MAX_GLOBAL_GAIN .020
+#define OSCILLOSCOPE_MIN_GLOBAL_GAIN .0011
 #define OSCILLOSCOPE_GLOBAL_GAIN_CHANGE_FACTOR 1.25
 #define OSCILLOSCOPE_X_MARGIN_LEFT 50
 #define OSCILLOSCOPE_X_MARGIN_RIGHT 25
@@ -105,6 +105,9 @@ class oscilloscope
   int y_margin_top;
   int y_margin_bottom;
   int pixels_per_data_point_to_draw;
+  double* y_min_for_pixel_x;
+  double* y_max_for_pixel_x;
+  double* mean_for_pixel_x;
 
   bool on_timeout();
   void set_channel_group_default();

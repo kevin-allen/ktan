@@ -331,7 +331,7 @@ void mainWindow::on_gain_increase_toolbutton_clicked()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_gain_increase_toolbutton_clicked()\n";
 #endif
-
+  osc->increase_gain();
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_gain_increase_toolbutton_clicked()\n";
 #endif
@@ -341,7 +341,7 @@ void mainWindow::on_gain_decrease_toolbutton_clicked()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_gain_decrease_toolbutton_clicked()\n";
 #endif
-
+  osc->decrease_gain();
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::on_gain_decrease_toolbutton_clicked()\n";
 #endif
