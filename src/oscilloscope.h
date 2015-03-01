@@ -50,8 +50,6 @@ class oscilloscope
   void increase_time_shown();
   void decrease_time_shown();
 
-
-
   channelGroup* get_one_channel_group(int g);
   bool get_is_displaying();
   void reset();
@@ -115,8 +113,10 @@ class oscilloscope
   int show_new_data();
   int show_data(int page);
   int fill_show_buffer(int page);
+  void draw_grid(Cairo::RefPtr<Cairo::Context> cr);
   void update_time_gain();
   
+
   double global_gain;
   double min_global_gain;
   double max_global_gain;

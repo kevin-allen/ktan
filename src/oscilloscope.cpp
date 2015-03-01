@@ -410,11 +410,11 @@ int oscilloscope::show_data(int page)
 	}
     }
   
- 
+  
 
   
 
-
+  draw_grid(cr);
 
 
 
@@ -649,4 +649,92 @@ channelGroup* oscilloscope::get_one_channel_group(int g)
     }
 
   return &grp[g];
+}
+void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
+{
+  
+  int width, height,i;
+  double vertical_channel_space,horizontal_channel_space;
+  int writing_y=30;
+  Gtk::Allocation allocation;
+  // get the size of the drawing area
+  
+  allocation = drawing_area->get_allocation();
+  width = allocation.get_width();
+  height = allocation.get_height();
+  
+  // get the vertical space allocated for each channel in the current group
+  vertical_channel_space=(height - y_margin_top - y_margin_bottom)/grp_for_display.get_num_channels();
+  horizontal_channel_space=width-x_margin_left-x_margin_right;
+
+
+
+  // write the channel number on the left side of the drawing area
+  cr->select_font_face("sans", Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
+  cr->set_font_size (14.0);
+  cr->set_source_rgb (0, 0, 0);
+  for (i=0;i<grp_for_display.get_num_channels();i++)
+    {
+      cr->move_to(5,
+		  (i*vertical_channel_space)+(vertical_channel_space/2) + y_margin_top);
+      cr->show_text (g_strdup_printf("%d",grp_for_display.get_channel_id(i)));
+    }
+	
+        
+  // // write the range in V for the channels
+  // // code is ugly because need access to comedi interface to know the range
+  // // now just give one number for all channels because user not allowed to change it for each channel individually
+  // double range_v=comedi_inter.dev[0].range_input_array[comedi_inter.dev[0].range_set_input]->max - comedi_inter.dev[0].range_input_array[comedi_inter.dev[0].range_set_input]->min;
+  // double visual_range_one_channel=(double)range_v/65535.00*vertical_channel_space/osc->global_gain/osc->gain[osc->current_group][0];// should be in V
+  // cairo_move_to(cr, 5,writing_y);
+  // cairo_show_text (cr, g_strdup_printf("%.2fV",visual_range_one_channel));
+  
+  // //  printf("global_gain: %f, gui_global_gain: %f, gain: %f, visual_range_one_channel: %f, vertical_channel_space: %d \n",osc->global_gain, osc->gui_global_gain, osc->gain[osc->current_group][0],visual_range_one_channel,vertical_channel_space); 
+
+  // // for each channel individually it would be something like this
+  // /* for (i=0;i<osc->number_channels_per_group[osc->current_group];i++) */
+  // /*   {  */
+  // /*     visual_range_one_channel=(double)range_v/65535.00*vertical_channel_space*osc->global_gain*osc->gain[osc->current_group][i]*1000; */
+  // /*     cairo_move_to(cr, 5, (i*vertical_channel_space)+(vertical_channel_space/2)+15); */
+  // /*     cairo_show_text (cr, g_strdup_printf("%f mV",visual_range_one_channel)); */
+
+  // /*   } */
+
+
+  // write the number of sec per page
+  cr->move_to(x_margin_left+(horizontal_channel_space/10*9.2),writing_y);
+  cr->show_text (g_strdup_printf("%.1lf ms",seconds_per_page*1000));
+
+  // write the global gain
+  cr->move_to(x_margin_left+(horizontal_channel_space/10*5),writing_y);
+  cr->show_text (g_strdup_printf("gain: %.4lf",global_gain));
+  
+
+     
+  // draw an horizontal tic between each channel at the right and left of the oscilloscope
+  cr->set_source_rgb(0.5, 0.5, 0.5);
+  cr->set_line_width(2);
+  for (i=0;i<grp_for_display.get_num_channels()+1;i++)
+     {
+       // left side
+       cr->move_to(0, (i*vertical_channel_space)+y_margin_top);
+       cr->rel_line_to (10, 0);
+     // right side
+       cr->move_to(width-10, (i*vertical_channel_space)+y_margin_top);
+       cr->rel_line_to(10, 0);
+   }
+  cr->stroke();
+      
+  // draw 9 vertical tics that will separate the oscilloscope region in 10 equal parts, at top and bottom
+  for (i=0; i < 11; i++)
+    {
+      cr->move_to(x_margin_left+(i*horizontal_channel_space/10), 0);
+      cr->rel_line_to(0, 10);
+      cr->move_to(x_margin_left+(i*horizontal_channel_space/10), height);
+      cr->rel_line_to(0, -10);
+    }
+  
+  cr->stroke();
+  cr->set_line_width(1.0);
+
 }

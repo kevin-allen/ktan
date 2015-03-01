@@ -274,7 +274,6 @@ int dataBuffer::getNewData(unsigned long int firstSample, double* data, int maxS
 	return -1;
       }
 
-
   // check if channels are all present in the buffer
   for(int i = 0; i < numChannels;i++)
     {
@@ -288,7 +287,6 @@ int dataBuffer::getNewData(unsigned long int firstSample, double* data, int maxS
 
   // prevent changing the buffer while working with it
   pthread_mutex_lock(&data_buffer_mutex);
-
 
   // number of samples to copy
   samplesToCopy=number_samples_read-firstSample;
