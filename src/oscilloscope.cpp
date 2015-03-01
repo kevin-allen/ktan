@@ -85,7 +85,8 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   // for timer
   tslot = sigc::mem_fun(*this, &oscilloscope::on_timeout);
   
-
+  factor_microvolt=OSC_FACTOR_MICROVOLT;
+  
 #ifdef DEBUG_OSC
   cerr << "osc sampling_rate: " << sampling_rate << '\n';
   cerr << "osc num_channels: " << num_channels << '\n';
@@ -520,14 +521,13 @@ int oscilloscope::get_data()
   cerr << "new samples available: " << new_samples_available << '\n';
   cerr << "samples_to_complete_page: " << samples_to_complete_page << '\n';
   cerr << "first_sample: " << first_sample << '\n';
-
   
 #endif
 
 
-  // 3. read the new data, maximum up to complete the current page, all channels
+  // 3. read the new data, maximum up to complete the current page, all channels, in microvolts
   buffer_ptr=buffer+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
-  int samples_returned=db->getNewData(first_sample,buffer_ptr,samples_to_complete_page,num_channels,all_channels_list);
+  int samples_returned=db->getNewData(first_sample,buffer_ptr,samples_to_complete_page,num_channels,all_channels_list,factor_microvolt);
   if(samples_returned<0)
     {
       cerr << "oscilloscope::get_data(), problem getting new data\n";
@@ -882,7 +882,6 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
 #ifdef DEBUG_OSC
   fprintf(stderr,"show page %d\n", page);
 #endif
-
 
   show_data(page);
   

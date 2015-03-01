@@ -23,6 +23,7 @@
 #define TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR 2
 #define OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA 5000 // the x resolution of the scree should be lower than this number
 #define OSC_TIME_BETWEEN_UPDATE_MS 20
+#d efine OSC_FACTOR_MICROVOLT 0.195
 #include <string>
 #include "timeKeeper.h"
 #include "dataBuffer.h"
@@ -112,6 +113,8 @@ class oscilloscope
   double* y_min_for_pixel_x;
   double* y_max_for_pixel_x;
   double* mean_for_pixel_x;
+
+  double factor_microvolt;
 
   bool on_timeout();
   void set_channel_group_default();
