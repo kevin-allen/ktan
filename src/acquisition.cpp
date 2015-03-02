@@ -67,12 +67,13 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
 
   evalBoard = new Rhd2000EvalBoard;
-
-  if(openBoardBit()==false)
+  set_successfully=openBoardBit();
+  if(set_successfully==false)
     {
       cerr << "acquisition::acquisition(), problem opening the board\n";
       return ;
     }
+  
   
   /*************************************
    code to be replaced by minimal code 

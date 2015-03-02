@@ -172,7 +172,11 @@ int main (int argc, char *argv[])
 
   // abort the window if the board is not correctly detected
   if(window->get_board_is_there()==false)
-    return 0;
+    {
+      cerr << "board is not there\n";
+      return 0;
+    }
+
   app->run(*window);
 
   delete window;
