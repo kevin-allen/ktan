@@ -84,7 +84,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   //  evalBoard->enableDacHighpassFilter(false);
   //  evalBoard->setDacHighpassFilter(250.0);
-  //  updateAuxDigOut();
+  //updateAuxDigOut();
   /************************************
   end of replacement
   **************************************/
@@ -105,8 +105,20 @@ acquisition::acquisition(dataBuffer* dbuffer)
   inter_acquisition_sleep_timespec=tk.set_timespec_from_ms(inter_acquisition_sleep_ms);
   pause_restart_acquisition_thread_ms=100;
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
-    
+
+
+  // // check the digital input data
+  // int di[16];
+  // for ( int i = 0; i < 1000 ; i++)
+  //   {
+  //     evalBoard->getTtlIn(di);
+  //     for(int j = 0; j < 16; j++)
+  // 	cout << i << " " << j << " " << di[j] << '\n';
+  //     usleep(5000); // allow thread to die
+  //   }
   
+
+
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
@@ -1185,27 +1197,18 @@ int acquisition::move_to_dataBuffer()
         }
 
 
-      //      numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
-      //      totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
-
-
-      // // Load and scale RHD2000 auxiliary input waveforms
-      // // (sampled at 1/4 amplifier sampling rate)
-      for (sample = 0; sample < SAMPLES_PER_DATA_BLOCK; sample += 4) 
+      // Board digital inputs
+      for (sample = 0; sample < SAMPLES_PER_DATA_BLOCK; sample++) 
        	{
-       	  // Load USB interface board digital input and output waveforms
       	  for (channel = 0; channel < 16; ++channel) 
       	    {
-      	      val=(dataQueue.front().ttlIn[sample] & (1 << channel)) != 0;
-	      for(int i = 0; i < 4; i++)
-      		{
-      		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample+i) * (totalNumChannels) + numAmplifierChannels + channel]= val;
-		}
+	      if((dataQueue.front().ttlIn[sample] & (1 << channel) ) > 0)
+		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=0;
+	      else
+		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=16000;
 	    }
 	}
-    
-
-      
+          
       // We are done with this Rhd2000DataBlock object; remove it from dataQueue
       numBlocksLoaded++;
       dataQueue.pop();
