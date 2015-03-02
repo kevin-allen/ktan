@@ -37,6 +37,7 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   draw_only_mean=false;
   
   num_channels=db->getNumChannels();
+  cerr << "oscilloscope number of channels: " << num_channels << '\n';
   all_channels_list = new unsigned int [num_channels];
   for(int i = 0; i < num_channels;i++)
     all_channels_list[i]=i;
@@ -605,13 +606,17 @@ void oscilloscope::set_channel_group_default()
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::set_channel_group_default()\n";
 #endif
+  int chan;
   // set default values in channel groups
   for(int i = 0; i < num_groups; i++)
     {
       grp[i].set_num_channels(DEFAULT_CHANNELS_PER_GROUP);
       for(int j = 0; j < DEFAULT_CHANNELS_PER_GROUP; j++)
 	{
-	  grp[i].set_channel_id(j,i*DEFAULT_CHANNELS_PER_GROUP+j);
+	  chan=i*DEFAULT_CHANNELS_PER_GROUP+j;
+	  while(chan>=num_channels)
+	    {chan=chan-num_channels;}
+	  grp[i].set_channel_id(j,chan);
 	}
     }
   

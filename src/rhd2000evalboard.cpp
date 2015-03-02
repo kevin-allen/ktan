@@ -433,10 +433,8 @@ bool Rhd2000EvalBoard::setSampleRate(AmplifierSampleRate newSampleRate)
     }
 
     sampleRate = newSampleRate;
-
     // Wait for DcmProgDone = 1 before reprogramming clock synthesizer
     while (isDcmProgDone() == false) {}
-
     // Reprogram clock synthesizer
     dev->SetWireInValue(WireInDataFreqPll, (256 * M + D));
     dev->UpdateWireIns();

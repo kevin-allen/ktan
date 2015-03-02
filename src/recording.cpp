@@ -30,7 +30,7 @@ recording::recording(dataBuffer* datab)
   
   proportion_buffer_filled_before_save=FILLING_PROPORTION_BEFORE_SAVE;
     
-  number_channels_save=DEFAULT_NUM_CHANNELS_SAVE;
+  number_channels_save=db->getNumChannels();
   max_samples_in_buffer=buffer_size/number_channels_save;
   new_samples_in_buffer=0;
   file_size=0;

@@ -99,7 +99,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   board_is_there=true;
   rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
   osc = new oscilloscope(db,drawing_area);
-  num_channels=32;
+  num_channels=db->getNumChannels();
 
   
   // // start data acquisition on the board

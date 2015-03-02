@@ -92,7 +92,9 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
   // contains only one usb block read.
-  totalNumChannels=numAmplifierChannels;
+  numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
+  totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
+  
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
 
@@ -171,7 +173,6 @@ bool acquisition::openBoardBit()
   evalBoard->initialize();
 
   
-
 #ifdef DEBUG_ACQ
     cerr << "board sampling rate: " << evalBoard->getSampleRate() << " Hz\n";
   cerr << "leaving acquisition::openBoardBit()\n";
@@ -283,15 +284,8 @@ void acquisition::openInterfaceBoard()
   cerr << "entering acquisition::openInterfaceBoard()\n";
 #endif
 
-
-  // function called from the gui to set up the board
-  // so that it is ready to record.
-
-
-  
   evalBoardMode = evalBoard->getBoardMode();
   cerr << "evaluation board mode: " << evalBoardMode << '\n';
-
   changeSampleRate(14);
 
   // upload all auxiliary SPI command sequences.
@@ -368,8 +362,7 @@ void acquisition::openInterfaceBoard()
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::openInterfaceBoard()\n";
 #endif
-
- }
+}
 
 void acquisition::findConnectedAmplifiers()
 {
@@ -641,12 +634,12 @@ void acquisition::findConnectedAmplifiers()
   cerr << "total number of amplifier channels: " << numAmplifierChannels << '\n';
 
 
-    // If the user plugs in more chips than the USB interface can support, throw
-    // up a warning that not all channels will be displayed.
+  // If the user plugs in more chips than the USB interface can support, throw
+  // up a warning that not all channels will be displayed.
   if (numStreamsRequired > 8) 
     cerr << "Capacity of USB Interface Exceeded\n"
 	 << "This RHD2000 USB interface board can support only 256  amplifier channels.\n";
-      
+  
 
   
   // Reconfigure USB data streams in consecutive order to accommodate all connected chips.
@@ -702,8 +695,6 @@ void acquisition::findConnectedAmplifiers()
 
   changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz);
   
-  
-
   delete[] portIndex;
   delete[] portIndexOld;
   delete[] chipIdOld;
@@ -1175,6 +1166,7 @@ int acquisition::move_to_dataBuffer()
 
   int block, channel, stream, i, j, sample;
   int indexAmp = 0;
+  short int val;
 
   // copy from usb buffer ot localBuffer
   for (block = 0; block < numUsbBlocksToRead; ++block) 
@@ -1186,14 +1178,34 @@ int acquisition::move_to_dataBuffer()
 	      for (stream = 0; stream < numStreams; ++stream) 
 		{ 
 		  //          (        sample no                  )*   total number channels  + channel no
-		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (32*numStreams) +   (channel*stream+channel) ] = 0 - (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
-		  // multiply by 0.195 to get microvolt
-		  // if(channel<1)
-		  // cout << channel << " " << dataQueue.front().amplifierData[stream][channel][sample] - 32768 << '\n';
+		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (channel*stream+channel) ] = 0 - (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
 		}
 	    }
 	  ++indexAmp;
         }
+
+
+      //      numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
+      //      totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
+
+
+      // // Load and scale RHD2000 auxiliary input waveforms
+      // // (sampled at 1/4 amplifier sampling rate)
+      for (sample = 0; sample < SAMPLES_PER_DATA_BLOCK; sample += 4) 
+       	{
+       	  // Load USB interface board digital input and output waveforms
+      	  for (channel = 0; channel < 16; ++channel) 
+      	    {
+      	      val=(dataQueue.front().ttlIn[sample] & (1 << channel)) != 0;
+	      for(int i = 0; i < 4; i++)
+      		{
+      		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample+i) * (totalNumChannels) + numAmplifierChannels + channel]= val;
+		}
+	    }
+	}
+    
+
+      
       // We are done with this Rhd2000DataBlock object; remove it from dataQueue
       numBlocksLoaded++;
       dataQueue.pop();

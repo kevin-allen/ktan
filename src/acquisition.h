@@ -8,6 +8,7 @@
 #define REGISTER_59_MISO_A  53
 #define REGISTER_59_MISO_B  58
 #define SAMPLES_PER_DATA_BLOCK  60
+#define ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS 16
 #define ACQUISITION_SLEEP_TIME_MS 5 // if too long could lead to buffer overflow, we make it short to be up to data often
 
 #include <string>
@@ -107,6 +108,7 @@ class acquisition
   // variables to operate the acquisition buffer
   int numChips;
   int numAmplifierChannels;
+  int numDigitalInputChannels;
   int totalNumChannels;
 
   // to play with leds during acquisition

@@ -4,7 +4,7 @@
 #define RECORDING_MAXIMUM_CHANNELS 256
 #define MAX_REC_BUFFER_LENGTH 200000 // recording_buffer 
 #define FILLING_PROPORTION_BEFORE_SAVE .30
-#define DEFAULT_NUM_CHANNELS_SAVE 32
+
 
 #include <string>
 #include <queue>
