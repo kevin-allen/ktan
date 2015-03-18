@@ -342,22 +342,22 @@
   <object class="GtkImage" id="gain_decrease_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_out_volt.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_out_volt.png</property>
   </object>
   <object class="GtkImage" id="gain_decrease_image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_out_volt.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_out_volt.png</property>
   </object>
   <object class="GtkImage" id="gain_increase_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_in_volt.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_in_volt.png</property>
   </object>
   <object class="GtkImage" id="gain_increase_image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_in_volt.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_in_volt.png</property>
   </object>
   <object class="GtkAdjustment" id="max_recording_time_adjustment">
     <property name="lower">1</property>
@@ -777,22 +777,22 @@
   <object class="GtkImage" id="time_decrease_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_out_time.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_out_time.png</property>
   </object>
   <object class="GtkImage" id="time_decrease_image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_out_time.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_out_time.png</property>
   </object>
   <object class="GtkImage" id="time_increase_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_in_time.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_in_time.png</property>
   </object>
   <object class="GtkImage" id="time_increase_image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">../data/gtk_zoom_in_time.png</property>
+    <property name="pixbuf">/usr/local/share/gtk_zoom_in_time.png</property>
   </object>
   <object class="GtkAdjustment" id="trial_no_adjustment">
     <property name="lower">1</property>

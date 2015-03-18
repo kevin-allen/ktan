@@ -671,9 +671,9 @@ void oscilloscope::set_default_colours()
 	  blue[i]=0.0;
 	  break;
 	case 4:
-	  red[i]=0.5;
-	  green[i]=0.6-((double)tetrode/num_tetrodes)*0.6;
-	  blue[i]=0.6;
+	  red[i]=0.0;
+	  green[i]=0.0;
+	  blue[i]=0.0;
 	  break;
 	case 5:
 	  red[i]=0.5;

@@ -68,8 +68,8 @@ int Rhd2000EvalBoard::open()
 
     cerr << "---- Intan Technologies ---- Rhythm RHD2000 Controller v1.0 ----" << endl << endl;
     if (okFrontPanelDLL_LoadLib(NULL) == false) {
-        cerr << "FrontPanel DLL could not be loaded.  " <<
-                "Make sure this DLL is in the application start directory." << endl;
+      cerr << "FrontPanel DLL could not be loaded.  " <<
+	"Make sure this DLL is in the application start directory." << endl;
         return -1;
     }
     okFrontPanelDLL_GetVersion(dll_date, dll_time);

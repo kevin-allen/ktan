@@ -51,15 +51,12 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   evalBoardMode=0;
 
-
   // Set up array for the 4 ports
   numPorts=4; 
   portEnabled = new bool[numPorts];
   for(int i = 0; i < numPorts; i++)
     portEnabled[i]=false;
   
-  
-
   manualDelayEnabled = new bool[4];
   for(int i; i < 4; i++)
     manualDelayEnabled[i]=false;
@@ -196,10 +193,13 @@ bool acquisition::openBoardBit()
       return false;
     }
   // Load Rhythm FPGA configuration bitfile (provided by Intan Technologies).
-  string bitfilename ="main.bit";
+  
+  string dir=DATADIR;
+  string bitfilename = dir +"/main.bit";
+
   if (!evalBoard->uploadFpgaBitfile(bitfilename)) {
-    cerr << "FPGA Configuration File Upload Error\n";
-    cerr << "Cannot upload configuration file to FPGA.  Make sure file main.bit is in the same directory as the executable file.\n";
+    cerr << "FPGA Configuration File " << bitfilename << " Upload Error\n";
+    cerr << "Cannot upload configuration file to FPGA\n";
     return false;
   }
   
@@ -224,12 +224,10 @@ bool acquisition::get_set_successfully()
 }
 
 
-
 bool acquisition::get_is_acquiring()
 {
   return is_acquiring;
 }
-
 
 
 void acquisition::openInterfaceBoard()

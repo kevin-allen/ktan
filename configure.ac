@@ -2,7 +2,7 @@
 AC_PREREQ(2.64)
 AC_INIT([ktan],[0.1],[allen@uni-heidelberg.de],[ktan],[])
 AC_COPYRIGHT([Copyright (C) 2011 Kevin Allen])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([-Wall -Werror])
 AC_CONFIG_SRCDIR([src/main.cpp])
 AC_CONFIG_HEADERS([config.h]) 
 AC_DEFINE([PACKAGE_COPYRIGHT],["Copyright (C) 2013 Kevin Allen"],[Copyright for the package])

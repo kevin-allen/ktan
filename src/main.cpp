@@ -150,7 +150,11 @@ int main (int argc, char *argv[])
   Glib::RefPtr<Gtk::Builder> refBuilder = Gtk::Builder::create();
   try
     {
-      refBuilder->add_from_file("ktan.glade");
+
+      string glade_file_name;
+      string file_name = "/ktan_sed.glade";
+      glade_file_name=DATADIR+file_name;
+      refBuilder->add_from_file(glade_file_name);
     }
   catch(const Glib::FileError& ex)
     {
