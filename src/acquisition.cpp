@@ -122,8 +122,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
 
-  //settingAmp();
-
   is_acquiring=false;
   inter_acquisition_sleep_ms=ACQUISITION_SLEEP_TIME_MS;
   inter_acquisition_sleep_timespec=tk.set_timespec_from_ms(inter_acquisition_sleep_ms);
@@ -226,84 +224,6 @@ bool acquisition::get_set_successfully()
 }
 
 
-void acquisition::settingAmp()
-{
-#ifdef DEBUG_ACQ
-  cerr << "entering acquisition::settingAmp()\n";
-#endif
-
-
-  // Set up an RHD2000 register object using this sample rate.
-  Rhd2000Registers *chipRegisters;
-  chipRegisters = new Rhd2000Registers(evalBoard->getSampleRate());
-  // Create command lists to be uploaded to auxiliary command slots.
-  int commandSequenceLength;
-  vector<int> commandList;
-  // First, let's create a command list for the AuxCmd1 slot. This command
-  // sequence will create a 1 kHz, full-scale sine wave for impedance testing.
-  commandSequenceLength = chipRegisters->createCommandListZcheckDac(commandList,1000.0, 128.0);
-  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd1, 0);
-  evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd1, 0,commandSequenceLength - 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd1, 0);
-  
-  // evalBoard->printCommandList(commandList); // optionally, print command list
-  // Next, we'll create a command list for the AuxCmd2 slot. This command sequence
-  // will sample the temperature sensor and other auxiliary ADC inputs.
-  commandSequenceLength = chipRegisters->createCommandListTempSensor(commandList);
-  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd2, 0);
-  evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd2, 0, commandSequenceLength - 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd2, 0);
-  // evalBoard->printCommandList(commandList); // optionally, print command list
-  
-  // For the AuxCmd3 slot, we will create two command sequences. Both sequences
-  // will configure and read back the RHD2000 chip registers, but one sequence will
-  // also run ADC calibration.
-  // Before generating register configuration command sequences, set amplifier
-  // bandwidth paramters.
-  double dspCutoffFreq;
-  dspCutoffFreq = chipRegisters->setDspCutoffFreq(10.0); // 10 Hz DSP cutoff
-  cout << "Actual DSP cutoff frequency: " << dspCutoffFreq << " Hz" << endl;
-  chipRegisters->setLowerBandwidth(1.0);
-  chipRegisters->setUpperBandwidth(10000.0);
-  // 1.0 Hz lower bandwidth
-  // 7.5 kHz upper bandwidth
-  commandSequenceLength = chipRegisters->createCommandListRegisterConfig(commandList, false);
-  // Upload version with no ADC calibration to AuxCmd3 RAM Bank 0.
-  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 0);
-  chipRegisters->createCommandListRegisterConfig(commandList, true);
-  // Upload version with ADC calibration to AuxCmd3 RAM Bank 1.
-  evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 1);
-  evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0, commandSequenceLength - 1);
-  // Select RAM Bank 1 for AuxCmd3 initially, so the ADC is calibrated.
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA,Rhd2000EvalBoard::AuxCmd3, 1);
-
-
-  // evalBoard->printCommandList(commandList); // optionally, print command list
-  // Since our longest command sequence is 60 commands, let’s just run the SPI
-  // interface for 60 samples.
-  evalBoard->setMaxTimeStep(60);
-  evalBoard->setContinuousRunMode(false);
-  // Start SPI interface.
-  evalBoard->run();
-  // Wait for the 60-sample run to complete.
-  while (evalBoard->isRunning()) { }
-  // Read the resulting single data block from the USB interface.
-  Rhd2000DataBlock *dataBlock =
-    new Rhd2000DataBlock(evalBoard->getNumEnabledDataStreams());
-  evalBoard->readDataBlock(dataBlock);
-  // Display register contents from data stream 0.
-  //  dataBlock->print(0);
-  
-  // Now that ADC calibration has been performed, we switch to the command sequence
-  // that does not execute ADC calibration.
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA,Rhd2000EvalBoard::AuxCmd3, 0);
-  delete dataBlock;
-#ifdef DEBUG_ACQ
-  cerr << "leaving acquisition::settingAmp()\n";
-#endif
-  
-
-}
 
 bool acquisition::get_is_acquiring()
 {

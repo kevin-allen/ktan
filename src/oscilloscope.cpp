@@ -295,7 +295,7 @@ int oscilloscope::show_data(int page)
   // do all the drawing here
   Cairo::RefPtr<Cairo::Context> cr;
   Gtk::Allocation allocation;
-  cairo_t * buffer_cr;
+  Cairo::RefPtr<Cairo::Context> buffer_cr;
   Cairo::RefPtr<Cairo::Surface> drawable_surface;
   Cairo::RefPtr<Cairo::Surface> buffer_surface;
   int width_start, height_start;
@@ -331,8 +331,12 @@ int oscilloscope::show_data(int page)
 
   drawable_surface = cr->get_target();
 
-  
-  // need to make a copy of surface for a smoother oscilloscope
+  // we will draw in a buffer surface and then copy to drawing_area, for smoother oscilloscope
+  buffer_surface= drawable_surface->create(drawable_surface,
+  					   Cairo::CONTENT_COLOR_ALPHA,
+					   width_start,
+					   height_start);
+  buffer_cr=Cairo::Context::create(buffer_surface);
 
 
   // get the vertical space allocated for each channel in the current group
@@ -343,17 +347,17 @@ int oscilloscope::show_data(int page)
   pixels_per_data_point=(double)x_pixels_to_draw/samples_per_page;
 
 
-  cr->set_source_rgb(0.9, 0.9, 0.9);
-  cr->paint();
+  buffer_cr->set_source_rgb(0.9, 0.9, 0.9);
+  buffer_cr->paint();
 
 
  // for each channel
-  cr->set_line_width(1.0);
+  buffer_cr->set_line_width(1.0);
   if(data_points_per_x_pixel>=1) // more than one data point per pixel in the screen
     {
       for (i=0;i<grp_for_display.get_num_channels();i++)
 	{
-	  cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
+	  buffer_cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
 			     green[grp_for_display.get_channel_id(i)],
 			     blue[grp_for_display.get_channel_id(i)]);
 	  
@@ -385,12 +389,12 @@ int oscilloscope::show_data(int page)
 	      if (j==0) 
 	      	{
 
-		  cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
+		  buffer_cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(mean_for_pixel_x[j])));
 	      	}
 	      else
 	      	{
-		  cr->line_to(x_margin_left+j*pixels_per_data_point_to_draw,
+		  buffer_cr->line_to(x_margin_left+j*pixels_per_data_point_to_draw,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(mean_for_pixel_x[j])));
 	      	}
 	    }
@@ -399,13 +403,13 @@ int oscilloscope::show_data(int page)
 	      /* draw from max to min */
 	      for (j=1;j<x_pixels_to_draw;j++)
 		{
-		  cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
+		  buffer_cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(y_max_for_pixel_x[j])));
-		  cr->line_to(x_margin_left+j*pixels_per_data_point_to_draw,
+		  buffer_cr->line_to(x_margin_left+j*pixels_per_data_point_to_draw,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+(y_min_for_pixel_x[j])));
 		}
 	    }
-	  cr->stroke();
+	  buffer_cr->stroke();
 	}
     }
   else // less than a data point per pixel in the screen
@@ -414,7 +418,7 @@ int oscilloscope::show_data(int page)
       for (i=0;i<grp_for_display.get_num_channels();i++)
 	{
 	
-	  cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
+	  buffer_cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
 	  		     green[grp_for_display.get_channel_id(i)],
 			     blue[grp_for_display.get_channel_id(i)]);
 	  
@@ -423,21 +427,25 @@ int oscilloscope::show_data(int page)
 	    {
 	      if (j==0) 
 	      	{
-		  cr->move_to(x_margin_left+j*pixels_per_data_point,
+		  buffer_cr->move_to(x_margin_left+j*pixels_per_data_point,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+show_buffer[(samples_per_page*i)+j]));
 	      	}
 	      else
 	      	{
-		  cr->line_to(x_margin_left+j*pixels_per_data_point,
+		  buffer_cr->line_to(x_margin_left+j*pixels_per_data_point,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+show_buffer[(samples_per_page*i)+j]));
 	      	}
 	    }
-	  cr->stroke();
+	  buffer_cr->stroke();
 	}
     }
   
-  
-  draw_grid(cr);
+
+  draw_grid(buffer_cr);
+
+  cr->set_source(buffer_surface,0,0);  
+  cr->paint();
+
 
 
   clock_gettime(CLOCK_REALTIME, &end_drawing);
@@ -643,43 +651,43 @@ void oscilloscope::set_default_colours()
       switch(remaining)
 	{
 	case 0:
-	  red[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
+	  red[i]=0.6-((double)tetrode/num_tetrodes)*0.6;
 	  green[i]=0.0;
-	  blue[i]=0.8;
+	  blue[i]=0.6;
 	  break;
 	case 1:
-	  red[i]=0+((double)tetrode/num_tetrodes)*0.8;
-	  green[i]=0.0;
-	  blue[i]=0.8;
+	  red[i]=0+((double)tetrode/num_tetrodes)*0.6;
+	  green[i]=0.5;
+	  blue[i]=0.6;
 	  break;
 	case 2:
-	  red[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
-	  green[i]=0.8;
+	  red[i]=0.6-((double)tetrode/num_tetrodes)*0.6;
+	  green[i]=0.6;
 	  blue[i]=0.0;
 	  break;
 	case 3:
-	  red[i]=0+((double)tetrode/num_tetrodes)*0.8;
-	  green[i]=0.8;
+	  red[i]=0+((double)tetrode/num_tetrodes)*0.6;
+	  green[i]=0.6;
 	  blue[i]=0.0;
 	  break;
 	case 4:
 	  red[i]=0.5;
-	  green[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
-	  blue[i]=0.8;
+	  green[i]=0.6-((double)tetrode/num_tetrodes)*0.6;
+	  blue[i]=0.6;
 	  break;
 	case 5:
 	  red[i]=0.5;
-	  green[i]=0+((double)tetrode/num_tetrodes)*0.8;
-	  blue[i]=0.8;
+	  green[i]=0+((double)tetrode/num_tetrodes)*0.6;
+	  blue[i]=0.6;
 	  break;
 	case 6:
 	  red[i]=0.3;
-	  green[i]=0.8-((double)tetrode/num_tetrodes)*0.8;
+	  green[i]=0.6-((double)tetrode/num_tetrodes)*0.6;
 	  blue[i]=0.3;
 	  break;
 	case 7:
 	  red[i]=0.2;
-	  green[i]=0+((double)tetrode/num_tetrodes)*0.8;
+	  green[i]=0+((double)tetrode/num_tetrodes)*0.6;
 	  blue[i]=0.5;
 	  break;
 	}

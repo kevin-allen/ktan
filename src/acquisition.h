@@ -54,7 +54,6 @@ class acquisition
   bool dspEnabled;
   
   
-  void settingAmp();
   bool openBoardBit();
   double desiredImpedanceFreq;
   double actualImpedanceFreq;
