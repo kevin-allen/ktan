@@ -36,7 +36,6 @@ class acquisition
   {
     ((acquisition *)context)->acquisition_thread_function();
   }
-
   void printLocalBuffer();
   
 
@@ -53,24 +52,25 @@ class acquisition
   double desiredLowerBandwidth;
   double actualLowerBandwidth;
   bool dspEnabled;
-
-
+  
+  
   void settingAmp();
   bool openBoardBit();
   double desiredImpedanceFreq;
   double actualImpedanceFreq;
   bool impedanceFreqValid;
-
+  
   bool* manualDelayEnabled;
   int* manualDelay;
-
+  
   bool* auxDigOutEnabled;
   int* auxDigOutChannel;
-
+  
   
   // digital to analog converters
   int numDacs;
   bool* dacEnabled;
+  int* dacSelectedChannel;
   int* chipId;
   int evalBoardMode;
   unsigned long int numBlocksLoaded;
@@ -148,6 +148,16 @@ class acquisition
   void checkFifoOK();
   void advanceLED();
   void turnOffLED();
+
+  void setDacThreshold1(int threshold);
+  void setDacThreshold2(int threshold);
+  void setDacThreshold3(int threshold);
+  void setDacThreshold4(int threshold);
+  void setDacThreshold5(int threshold);
+  void setDacThreshold6(int threshold);
+  void setDacThreshold7(int threshold);
+  void setDacThreshold8(int threshold);
+
 };
 
 

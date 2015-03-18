@@ -1,4 +1,4 @@
-#define DEBUG_WIN
+//#define DEBUG_WIN
 #include "mainWindow.h"
 #include "rhd2000datablock.h"
 #include "rhd2000registers.h"
