@@ -1,4 +1,4 @@
-#define DEBUG_ACQ
+//#define DEBUG_ACQ
 #include "acquisition.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
@@ -238,7 +238,11 @@ void acquisition::openInterfaceBoard()
 #endif
 
   evalBoardMode = evalBoard->getBoardMode();
+#ifdef DEBUG_ACQ
   cerr << "evaluation board mode: " << evalBoardMode << '\n';
+#endif
+
+
   changeSampleRate(14); 
 
   // Select RAM Bank 0 for AuxCmd3 initially, so the ADC is calibrated.
@@ -461,7 +465,14 @@ void acquisition::findConnectedAmplifiers()
 	  id = deviceId(dataBlock, stream, register59Value);
 	  if (id == CHIP_ID_RHD2132 || id == CHIP_ID_RHD2216 || (id == CHIP_ID_RHD2164 && register59Value == REGISTER_59_MISO_A)) 
 	    {
+
+#ifdef DEBUG_ACQ
 	      cerr << "Delay: " << delay << " on stream " << stream << " is good." << endl;
+#endif
+
+
+
+	      
 	      numChips++;
 	      sumGoodDelays[stream] = sumGoodDelays[stream] + 1;
 	      if (indexFirstGoodDelay[stream] == -1) 
@@ -487,7 +498,13 @@ void acquisition::findConnectedAmplifiers()
 	numChips++;
     
     }
+
+
+#ifdef DEBUG_ACQ
   cerr << "Number of Intan chips: " << numChips << '\n';
+#endif
+
+
 
 
   // Set cable delay settings that yield good communication with each
@@ -584,16 +601,32 @@ void acquisition::findConnectedAmplifiers()
 	}
     }
   
+#ifdef DEBUG_ACQ
   cerr << "number of streams required: " << numStreamsRequired << '\n';
+#endif
+
+
   
   numAmplifierChannels=0;
+#ifdef DEBUG_ACQ
   cerr << "number of amplifier channels on ports: \n";
+#endif
+
   for (int i = 0; i < 4; i++)
     {
+      #ifdef DEBUG_ACQ
       cerr << "port " << i << " : " << numChannelsOnPort[i] << " channels\n";
+#endif
+  
+      
       numAmplifierChannels+=numChannelsOnPort[i];
     }
+
+      #ifdef DEBUG_ACQ
   cerr << "total number of amplifier channels: " << numAmplifierChannels << '\n';
+#endif
+
+
 
 
   // If the user plugs in more chips than the USB interface can support, throw
@@ -638,7 +671,11 @@ void acquisition::findConnectedAmplifiers()
 	}
     }
 
+    #ifdef DEBUG_ACQ
   cerr << "number of usb stream enabled: " << stream << "\n";
+#endif
+
+
   numStreams=stream;
 
   // Disable unused data streams.
@@ -772,7 +809,11 @@ void acquisition::changeSampleRate(int sampleRateIndex)
     break;
   }
   
+    #ifdef DEBUG_ACQ
   cerr << "New sampling rate " << boardSampleRate << " Hz\n";
+#endif
+
+
 
   // Set up an RHD2000 register object using this sample rate to
   // optimize MUX-related register settings.
@@ -842,9 +883,12 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   actualUpperBandwidth = chipRegisters.setUpperBandwidth(desiredUpperBandwidth);
   chipRegisters.enableDsp(dspEnabled);
 
+    #ifdef DEBUG_ACQ
   cerr << "actual Dsp cutoff frequency : " << actualDspCutoffFreq << '\n';
   cerr << "actual lower bandwidth: " << actualLowerBandwidth << '\n';
   cerr << "actual upper bandwidth: " << actualUpperBandwidth << '\n';
+#endif
+
 
   chipRegisters.createCommandListRegisterConfig(commandList, true);
   // Upload version with ADC calibration to AuxCmd3 RAM Bank 0.
@@ -1183,72 +1227,9 @@ int acquisition::move_to_dataBuffer()
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::move_to_dataBuffer()\n";
 #endif
-
 }
 
 
-
-int acquisition::loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,
-				  int numBlocks,
-				  queue<Rhd2000DataBlock> &bufferQueue)
-{
-
-  // current data from usb are in dataQueue
-
-  cerr << "entering acquisition::loadAmplifierData\n";
-
-  int block, t, channel, stream, i, j;
-  int indexAmp = 0;
-  int indexDig = 0;
-  int numWordsWritten = 0;
-   
- 
-  for (block = 0; block < numBlocks; ++block) 
-    {
-      cerr << "block " << block << '\n';
-      /*
-      // Load and scale RHD2000 amplifier waveforms
-      // (sampled at amplifier sampling rate)
-      for (t = 0; t < SAMPLES_PER_DATA_BLOCK; ++t) 
-	{
-	  for (channel = 0; channel < 32; ++channel) 
-	    {
-	      for (stream = 0; stream < numDataStreams; ++stream) 
-		{
-		  // Amplifier waveform units = microvolts
-		  amplifierPreFilter[stream][channel][indexAmp] = 0.195 *
-		    (dataQueue.front().amplifierData[stream][channel][t] - 32768);
-		}
-	    }
-	  ++indexAmp;
-        }
-      
-      // Load and scale RHD2000 auxiliary input waveforms
-      // (sampled at 1/4 amplifier sampling rate)
-      for (t = 0; t < SAMPLES_PER_DATA_BLOCK; t += 4) 
-	{
-	  // Load USB interface board digital input and output waveforms
-	  for (t = 0; t < SAMPLES_PER_DATA_BLOCK; ++t) 
-	    {
-	      for (channel = 0; channel < 16; ++channel) 
-		{
-		  boardDigIn[channel][indexDig] =
-		    (dataQueue.front().ttlIn[t] & (1 << channel)) != 0;
-		  boardDigOut[channel][indexDig] =
-		    (dataQueue.front().ttlOut[t] & (1 << channel)) != 0;
-		  
-		}
-	      ++indexDig;
-	    }
-	}
-	  // We are done with this Rhd2000DataBlock object; remove it from dataQueue
-        dataQueue.pop();
-      */
-    }
- 
-  cerr << "leaving acquisition::loadAmplifierData\n";
-  return 0;
-}
 
 
 void acquisition::updateAuxDigOut()

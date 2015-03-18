@@ -1,4 +1,4 @@
-//#define DEBUG_WIN
+#define DEBUG_WIN
 #include "mainWindow.h"
 #include "rhd2000datablock.h"
 #include "rhd2000registers.h"
@@ -185,15 +185,19 @@ void mainWindow::on_play_toolbutton_toggled()
       // if not recording, stop acquisition
       if(rec->get_is_recording()==false)
 	{ 
+#ifdef DEBUG_WIN
 	  cerr << "stop acquisition\n";
+#endif
 	  acq->stop_acquisition();
 	}
     }
-  else
+  else // not displaying
     {
-      if(acq->get_is_acquiring()==false)
+      if(acq->get_is_acquiring()==false) // no acquisition running, so start it
 	{
+#ifdef DEBUG_WIN
 	  cerr << "starting acquisition\n";
+#endif
 	  db->resetData();
 	  acq->start_acquisition();
 	  pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
@@ -218,9 +222,10 @@ void mainWindow::on_record_toolbutton_toggled()
   if(rec->get_is_recording()==true)
     {
       // recording is running, stop it
+#ifdef DEBUG_WIN
       cerr << "recording is running, stop it\n";
+#endif
       rec->stop_recording();
-      acq->stop_acquisition();
       file_base_entry->set_text(rec->get_file_base());
       trial_spinbutton->set_value(rec->get_file_index());
 
@@ -228,12 +233,29 @@ void mainWindow::on_record_toolbutton_toggled()
       m_context_id = statusbar->get_context_id("Statusbar example");
       statusbar->pop(m_context_id);
       statusbar_timeout_connection.disconnect();
+
+      if(osc->get_is_displaying()==false)
+	acq->stop_acquisition();
+
     }
   else 
     {
-      // recording not running, start it
+      // recording not under way, start it
+      bool osc_flag=osc->get_is_displaying();
+      // if oscilloscope running, stop it for a brief moment
+      if(osc_flag==true)
+	osc->stop_oscilloscope();
+
+
+      if(acq->get_is_acquiring()==true)
+	acq->stop_acquisition();
+
+       // recording not running, start it
       db->resetData();
+#ifdef DEBUG_WIN
       cerr << "recording not running, start it\n";
+#endif
+
       rec->set_max_recording_time(max_recording_time_spinbutton->get_value());
       rec->set_file_base(file_base_entry->get_text());
       rec->set_file_index(trial_spinbutton->get_value());
@@ -246,21 +268,22 @@ void mainWindow::on_record_toolbutton_toggled()
 	  record_toolbutton_connection = record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
 	  return;
 	}
-      if(acq->get_is_acquiring()==false)
-	{
-	  cerr << "start acquisition\n";
-	  acq->start_acquisition();
-	  pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
-	}
-      else
-	{
-	  cerr << "acquisition was already running\n";
-	}
       
+      acq->start_acquisition();
+      pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
+      
+
+#ifdef DEBUG_WIN
       cerr << "start recording\n";
+#endif
+
       rec->start_recording();
       pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
       statusbar_timeout_connection = Glib::signal_timeout().connect(tslot,1000); 
+
+
+      if(osc_flag==true)
+	osc->start_oscilloscope();
 
       
     }

@@ -37,7 +37,12 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   draw_only_mean=false;
   
   num_channels=db->getNumChannels();
+
+  #ifdef DEBUG_OSC
   cerr << "oscilloscope number of channels: " << num_channels << '\n';
+#endif
+
+
   all_channels_list = new unsigned int [num_channels];
   for(int i = 0; i < num_channels;i++)
     all_channels_list[i]=i;

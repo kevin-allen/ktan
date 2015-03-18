@@ -66,19 +66,35 @@ int Rhd2000EvalBoard::open()
     string serialNumber = "";
     int i, nDevices;
 
+
+#ifdef DEBUG_EVAL
     cerr << "---- Intan Technologies ---- Rhythm RHD2000 Controller v1.0 ----" << endl << endl;
+#endif
+
+
     if (okFrontPanelDLL_LoadLib(NULL) == false) {
       cerr << "FrontPanel DLL could not be loaded.  " <<
 	"Make sure this DLL is in the application start directory." << endl;
         return -1;
     }
     okFrontPanelDLL_GetVersion(dll_date, dll_time);
+
+
+#ifdef DEBUG_EVAL
     cerr << endl << "FrontPanel DLL loaded.  Built: " << dll_date << "  " << dll_time << endl;
+#endif
+    
+
 
     dev = new okCFrontPanel;
 
+    #ifdef DEBUG_EVAL
     cerr << endl << "Scanning USB for Opal Kelly devices..." << endl << endl;
+#endif
+
+
     nDevices = dev->GetDeviceCount();
+#ifdef DEBUG_EVAL
     cerr << "Found " << nDevices << " Opal Kelly device" << ((nDevices == 1) ? "" : "s") <<
             " connected:" << endl;
     for (i = 0; i < nDevices; ++i) {
@@ -87,6 +103,8 @@ int Rhd2000EvalBoard::open()
                 " with serial number " << dev->GetDeviceListSerial(i).c_str() << endl;
     }
     cerr << endl;
+#endif
+
 
     // Find first device in list of type XEM6010LX45.
     for (i = 0; i < nDevices; ++i) {
@@ -107,11 +125,15 @@ int Rhd2000EvalBoard::open()
     dev->LoadDefaultPLLConfiguration();
 
     // Get some general information about the XEM.
+
+    #ifdef DEBUG_EVAL
     cerr << "FPGA system clock: " << getSystemClockFreq() << " MHz" << endl; // Should indicate 100 MHz
     cerr << "Opal Kelly device firmware version: " << dev->GetDeviceMajorVersion() << "." <<
             dev->GetDeviceMinorVersion() << endl;
     cerr << "Opal Kelly device serial number: " << dev->GetSerialNumber().c_str() << endl;
     cerr << "Opal Kelly device ID string: " << dev->GetDeviceID().c_str() << endl << endl;
+#endif
+
 
     return 1;
 }
@@ -169,9 +191,13 @@ bool Rhd2000EvalBoard::uploadFpgaBitfile(string filename)
     if (boardId != RHYTHM_BOARD_ID) {
         cerr << "FPGA configuration does not support Rhythm.  Incorrect board ID: " << boardId << endl;
         return(false);
-    } else {
+    } 
+    else {
+      #ifdef DEBUG_EVAL
         cerr << "Rhythm configuration file successfully loaded.  Rhythm version number: " <<
                 boardVersion << endl << endl;
+#endif
+	      
     }
 
     return(true);
@@ -1659,8 +1685,9 @@ int Rhd2000EvalBoard::getBoardMode() const
     dev->UpdateWireOuts();
     mode = dev->GetWireOutValue(WireOutBoardMode);
 
-    cerr << "Board mode: " << mode << endl << endl;
-
+    #ifdef DEBUG_EVAL
+    cerr << "Board mode: " << mode << endl;
+#endif
     return mode;
 }
 

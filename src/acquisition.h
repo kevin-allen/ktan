@@ -136,18 +136,13 @@ class acquisition
   void findConnectedAmplifiers();
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
-
   void updateAuxDigOut();
   // thread functions
   void *acquisition_thread_function(void);
-  
-  int loadAmplifierData(queue<Rhd2000DataBlock> &dataQueue,int numBlocks,queue<Rhd2000DataBlock> &bufferQueue);
   int move_to_dataBuffer();
-
   void checkFifoOK();
   void advanceLED();
   void turnOffLED();
-
   void setDacThreshold1(int threshold);
   void setDacThreshold2(int threshold);
   void setDacThreshold3(int threshold);
