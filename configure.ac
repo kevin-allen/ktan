@@ -27,5 +27,5 @@ AC_CHECK_FUNCS([memset])
 AC_CHECK_HEADERS([fcntl.h])
 AC_PREREQ
 AC_TYPE_OFF_T
-AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile data/Makefile]) ## generate Makefile from Makefile.in
+AC_CONFIG_FILES([Makefile src/Makefile data/Makefile]) ## generate Makefile from Makefile.in
 AC_OUTPUT
