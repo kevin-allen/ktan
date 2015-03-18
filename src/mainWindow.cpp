@@ -53,6 +53,16 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   builder->get_widget("osc_all_channels_treeview",osc_all_channels_treeview);
   builder->get_widget("drawing_area",drawing_area);
   builder->get_widget("window",window);
+
+  string icon_file_name;
+  string dir = DATADIR;
+  icon_file_name=dir+"/ktan_icon.png";
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf = Gdk::Pixbuf::create_from_file(icon_file_name);
+  window->set_icon(pixbuf);
+
+
+
+
   
   // connect signals to functions
   play_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_play_toolbutton_toggled));
