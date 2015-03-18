@@ -20,16 +20,10 @@ Here are some of ktan's features:
 To compile ktan, you need to install the gtkmm30 package:
 yum install gtkmm30-devel.x86_64
 
-
 To install: ./autogen.sh;./configure; make; su -; make install
 
 If you are using a primitive version of the software, make sure that you have install the USB drivers for the Opal Kelly. They can be download from the intan web site.
 
 cp 60-opalkelly.rules /etc/udev/rules.d/
-
-In the directory with the compiled program, you will need 2 files
-main.bit
-libokFrontPanel.so
-
 
 If you are using ktan for research purposes and get to publish the data, please be kind enough to refer to ktan. 
