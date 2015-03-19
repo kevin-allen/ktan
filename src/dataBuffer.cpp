@@ -50,7 +50,12 @@ void dataBuffer::resetData()
   oldest_sample_number=0; // oldest sample number currently in buffer
   number_samples_in_buffer=0; // number of valid samples in buffer
   index_next_sample=0;
-  pthread_mutex_unlock(&data_buffer_mutex);
+
+#ifdef DEBUG_BUF
+  cerr << "pthread_mutex_unlock &data_buffer_mutex\n";
+  // pthread_mutex_unlock(&data_buffer_mutex);
+#endif
+
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::resetData()\n";
 #endif
