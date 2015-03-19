@@ -85,7 +85,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   group_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_group_spinbutton_value_changed));
   osc_group_preference_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_osc_group_preference_spinbutton_value_changed));
 
-  window->signal_hide().connect(sigc::mem_fun(*this, &mainWindow::on_hide));
+  window->signal_delete_event().connect(sigc::mem_fun(*this, &mainWindow::on_window_delete_event));
+  
 
   db=NULL;
   acq=NULL;
@@ -446,17 +447,6 @@ void mainWindow::on_about_menuitem_activate()
 #endif
 }
 
-
-void mainWindow::on_quit_menuitem_activate()
-{
-#ifdef DEBUG_WIN
-  cerr << "entering mainWindow::quit_menuitem_activate()\n";
-#endif
-  hide();
-#ifdef DEBUG_WIN
-  cerr << "leaving mainWindow::quit_menuitem_activate()\n";
-#endif
-}
 
 void mainWindow::on_oscilloscope_menuitem_activate()
 {
@@ -855,11 +845,37 @@ void mainWindow::copy_osc_group_tree_model_into_channel_group()
 
 }
 
-void mainWindow::on_hide()
+
+void mainWindow::on_quit_menuitem_activate()
 {
 #ifdef DEBUG_WIN
-  cerr << " mainWindow::on_hide()\n";
+  cerr << "entering mainWindow::quit_menuitem_activate()\n";
 #endif
-
-
+  if(rec->get_is_recording()==true)
+     rec->stop_recording();
+  if(osc->get_is_displaying()==true)
+    osc->stop_oscilloscope();
+  if(acq->get_is_acquiring()==true)
+    acq->stop_acquisition();
+  hide();
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::quit_menuitem_activate()\n";
+#endif
 }
+
+
+bool mainWindow::on_window_delete_event(GdkEventAny* event)
+{
+#ifdef DEBUG_WIN
+  cerr << " mainWindow::on_window_delete_event()\n";
+#endif
+  if(rec->get_is_recording()==true)
+     rec->stop_recording();
+  if(osc->get_is_displaying()==true)
+    osc->stop_oscilloscope();
+  if(acq->get_is_acquiring()==true)
+    acq->stop_acquisition();
+  hide();
+  return true;
+}
+

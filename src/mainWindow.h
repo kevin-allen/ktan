@@ -132,8 +132,7 @@ class mainWindow: public Gtk::Window
   void on_add_channel_button_clicked();
   void on_remove_channel_button_clicked();
   void copy_osc_group_tree_model_into_channel_group();
-  void on_hide();
-
+  bool on_window_delete_event(GdkEventAny* event);
 };
 
 #endif // MAINWINDOW_H
