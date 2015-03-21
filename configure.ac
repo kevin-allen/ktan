@@ -14,6 +14,7 @@ AM_PROG_CC_C_O
 AC_PROG_INSTALL 
 AC_SEARCH_LIBS([pthread_create],[pthread])
 AC_SEARCH_LIBS([clock_gettime],[rt])
+AC_SEARCH_LIBS([shm_open],[rt])
 AC_SEARCH_LIBS([sqrt],[m])
 AC_SEARCH_LIBS([dlopen],[dl])
 PKG_CHECK_MODULES([GTK], [gtk+-2.0 >= 2.4.0])

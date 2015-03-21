@@ -16,6 +16,7 @@
 #include "timeKeeper.h"
 #include "dataBuffer.h"
 #include <pthread.h> // to be able to create threads
+#include "positrack_shared_memory.h"
 
 using namespace std;
 
@@ -26,7 +27,7 @@ class acquisition
  public:
   acquisition(dataBuffer* datab);
   ~acquisition();
-
+  
   bool start_acquisition();
   bool stop_acquisition();
   bool get_is_acquiring();
@@ -38,12 +39,18 @@ class acquisition
   }
   void printLocalBuffer();
   
-
+  
  private:
   Rhd2000EvalBoard *evalBoard;
   int errorCode;
   bool fastSettleEnabled;
   bool set_successfully;
+
+  struct positrack_shared_memory* psm;
+  int psm_size;
+  int psm_des;
+
+  
   // amplifier settings 
   double desiredDspCutoffFreq;
   double actualDspCutoffFreq;
@@ -105,11 +112,14 @@ class acquisition
  
 
   // variables to operate the acquisition buffer
+  
   int numChips;
   int numAmplifierChannels;
   int numDigitalInputChannels;
+  int numSharedMemoryChannels;
   int totalNumChannels;
-
+  bool useSharedMemeory;
+  
   // to play with leds during acquisition
   int ledArray[8];
   int ledIndex;

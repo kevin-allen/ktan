@@ -1,5 +1,6 @@
 //#define DEBUG_ACQ
 #include "acquisition.h"
+#include "positrack_shared_memory.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
 #include "rhd2000registers.h"
@@ -7,6 +8,14 @@
 #include <stdlib.h> 
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <pthread.h>
+
+
 
 acquisition::acquisition(dataBuffer* dbuffer)
 {
@@ -20,6 +29,14 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   is_acquiring = false;
 
+  // to get tracking data via shared memory
+  useSharedMemeory=true;
+  if(useSharedMemeory)
+    numSharedMemoryChannels=1;
+  else
+    numSharedMemoryChannels=0;
+    
+  
   // Default amplifier bandwidth settings
   desiredLowerBandwidth = 0.1;
   desiredUpperBandwidth = 7500.0;
@@ -48,9 +65,8 @@ acquisition::acquisition(dataBuffer* dbuffer)
   for (int i = 0; i < 16; ++i)
     ttlOut[i] = 0;
 
-
   evalBoardMode=0;
-
+  
   // Set up array for the 4 ports
   numPorts=4; 
   portEnabled = new bool[numPorts];
@@ -63,7 +79,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
   manualDelay = new int[4];
   for(int i; i < 4; i++)
     manualDelay[i]=0;
-
 
 
 
@@ -114,7 +129,9 @@ acquisition::acquisition(dataBuffer* dbuffer)
   // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
   // contains only one usb block read.
   numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
-  totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
+  totalNumChannels=numAmplifierChannels+numDigitalInputChannels+numSharedMemoryChannels;
+
+  //  cerr << numAmplifierChannels << " " << numDigitalInputChannels << " " << numSharedMemoryChannels << "\n";
   
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
@@ -137,7 +154,29 @@ acquisition::acquisition(dataBuffer* dbuffer)
   //   }
   
 
+  // set up shared memory for positrack
+  psm_size=sizeof(positrack_shared_memory);
+  psm_des=shm_open(POSITRACKSHARE, O_CREAT | O_RDWR | O_TRUNC,0600);
+  if(psm_des ==-1)
+    {
+      cerr << "problem with shm_open\n";
+      return ;
+    }
+  if (ftruncate(psm_des, psm_size) == -1)
+    {
+      cerr << "Error with ftruncate\n";
+      return;
+    }
 
+  psm = (positrack_shared_memory*) mmap(0, psm_size, PROT_READ | PROT_WRITE, MAP_SHARED, psm_des, 0);
+  if (psm == MAP_FAILED) 
+    {
+      cerr << "Error with mmap\n";
+      return;
+    
+    }
+  psm_init(psm);
+  
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
@@ -154,6 +193,19 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
+  psm_free(psm);
+
+  // unlink to the shared memory, should it only be done in positrack?
+  //shm_unlink(POSITRACKSHARE);
+
+// unmap the shared memory
+  if(munmap(psm, psm_size) == -1) 
+    {
+      cerr << "problem with munmap\n";
+      return;
+    }
+  
+  
 
   delete[] dacEnabled;
   delete[] portEnabled;
@@ -1298,5 +1350,59 @@ void acquisition::setDacThreshold8(int threshold)
 {
     int threshLevel = (int) ((double) threshold / 0.195 + 0.5) + 32768;
     evalBoard->setDacThreshold(7, threshLevel, threshold >= 0);
+}
+
+
+
+
+
+void psm_init(struct positrack_shared_memory* psm)
+{
+  int i;
+  psm->numframes=POSITRACKSHARENUMFRAMES;
+  for(i = 0 ; i < psm->numframes; i++)
+    {
+      psm->id[i]=0; // set to invalid value
+      psm->frame_no[i]=0;
+      psm->ts[i].tv_sec=0;
+      psm->ts[i].tv_nsec=0;
+      
+    }
+
+  if(psm->is_mutex_allocated==0)
+    {
+      /* Initialise attribute to mutex. */
+      pthread_mutexattr_init(&psm->attrmutex);
+      pthread_mutexattr_setpshared(&psm->attrmutex, PTHREAD_PROCESS_SHARED);
+      /* Initialise mutex. */
+      pthread_mutex_init(&psm->pmutex, &psm->attrmutex);
+      psm->is_mutex_allocated==1;
+    }
+}
+
+void psm_free(struct positrack_shared_memory* psm)
+{
+  if(psm->is_mutex_allocated==1)
+    {
+      pthread_mutex_destroy(&psm->pmutex);
+      pthread_mutexattr_destroy(&psm->attrmutex); 
+    }
+}
+
+void psm_add_frame(struct positrack_shared_memory* psm, unsigned long int frame_no, struct timespec fts)
+{
+  int i;
+  pthread_mutex_lock(&psm->pmutex);
+  // move forward the old frames in the array
+  for(i =psm->numframes-1; i > 0; i--)
+    {
+      psm->id[i]=psm->id[i-1];
+      psm->frame_no[i]=psm->frame_no[i-1];
+      psm->ts[i]=psm->ts[i-1];
+    }
+  psm->id[0]=psm->id[0]+1;
+  psm->frame_no[0]=frame_no;
+  psm->ts[0]=fts;
+  pthread_mutex_unlock(&psm->pmutex);
 }
 
