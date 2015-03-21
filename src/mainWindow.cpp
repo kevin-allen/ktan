@@ -239,6 +239,8 @@ void mainWindow::on_record_toolbutton_toggled()
       cerr << "recording is running, stop it\n";
 #endif
       rec->stop_recording();
+      acq->set_check_positrack(false);
+      
       file_base_entry->set_text(rec->get_file_base());
       trial_spinbutton->set_value(rec->get_file_index());
 
@@ -250,7 +252,6 @@ void mainWindow::on_record_toolbutton_toggled()
       if(osc->get_is_displaying()==false)
 	{
 	  acq->stop_acquisition();
-	  acq->set_check_positrack(false);
 	}
     }
   else 

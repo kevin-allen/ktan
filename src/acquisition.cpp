@@ -1163,6 +1163,23 @@ void *acquisition::acquisition_thread_function(void)
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
 	  checkFifoOK();
 
+	  // check if we had access to all frames of positrack
+	  // this should be in the recording object as it needs to stop recording and
+	  // warn the user.
+	  if(check_positrack)
+	    {
+	      pthread_mutex_lock(&psm->pmutex);
+	      frame_id=psm->id[0];
+	      frame_no=psm->frame_no[0];
+	      frame_ts=psm->ts[0];
+	      pthread_mutex_unlock(&psm->pmutex);
+	      if(frame_id!=frame_no)
+		{
+		  cerr << "frame_id:" << frame_id << " is not equal to frame_no:" << frame_no << '\n';
+		  cerr << "there were tracking frames of positrack that were processed before acquisition started\n";
+		}
+	    }
+
 	  // double duration_via_sample = db->get_number_samples_read()/(double) boardSampleRate * 1000;
 	  // double duration_via_timespec = acquistion_duration_ts.tv_sec *1000 + ((double)acquistion_duration_ts.tv_nsec)/1000000;
 	  // last_frame_delay_ms=duration_via_timespec - duration_via_sample;
@@ -1269,23 +1286,7 @@ int acquisition::move_to_dataBuffer()
       dataQueue.pop();
     }
 
-
-  // check if there are new events to add in the buffer comming from positrack shared memory
-  
-  if(check_positrack)
-    {
-      pthread_mutex_lock(&psm->pmutex);
-      frame_id=psm->id[0];
-      frame_no=psm->frame_no[0];
-      frame_ts=psm->ts[0];
-      pthread_mutex_unlock(&psm->pmutex);
-
-      cout << "frame_id:" << frame_id << ' '
-	   << "frame_no:" << frame_no << ' '
-	   << frame_ts.tv_sec << " " << frame_ts.tv_nsec/1000 << " microsec" << '\n';
-      
-    }
-      
+    
   // move data to the mainWindow data buffer
   db->addNewData(numUsbBlocksToRead*SAMPLES_PER_DATA_BLOCK,localBuffer);
 
