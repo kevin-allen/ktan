@@ -31,11 +31,8 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   // to get tracking data via shared memory
   useSharedMemeory=true;
-  if(useSharedMemeory)
-    numSharedMemoryChannels=1;
-  else
-    numSharedMemoryChannels=0;
-    
+  check_positrack=false; // this is set to true when recording starts
+                         // and back to false when recording ends
   
   // Default amplifier bandwidth settings
   desiredLowerBandwidth = 0.1;
@@ -122,14 +119,11 @@ acquisition::acquisition(dataBuffer* dbuffer)
       auxDigOutChannel[i]=0;
     }
   updateAuxDigOut();
-  
-
-  
-  
+    
   // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
   // contains only one usb block read.
   numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
-  totalNumChannels=numAmplifierChannels+numDigitalInputChannels+numSharedMemoryChannels;
+  totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
 
   //  cerr << numAmplifierChannels << " " << numDigitalInputChannels << " " << numSharedMemoryChannels << "\n";
   
@@ -143,16 +137,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
 
 
-  // // check the digital input data
-  // int di[16];
-  // for ( int i = 0; i < 1000 ; i++)
-  //   {
-  //     evalBoard->getTtlIn(di);
-  //     for(int j = 0; j < 16; j++)
-  // 	cout << i << " " << j << " " << di[j] << '\n';
-  //     usleep(5000); // allow thread to die
-  //   }
-  
 
   // set up shared memory for positrack
   psm_size=sizeof(positrack_shared_memory);
@@ -1058,6 +1042,7 @@ bool acquisition::start_acquisition()
   // start the board
   evalBoard->setContinuousRunMode(true);
   evalBoard->run();
+  clock_gettime(CLOCK_REALTIME, &acquisition_start_ts); // this is the time the recording started
   is_acquiring = true;
 
 #ifdef DEBUG_ACQ
@@ -1167,6 +1152,9 @@ void *acquisition::acquisition_thread_function(void)
       // If new data is ready, then read it.
       if (newDataReady) 
 	{
+	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data 
+	  acquistion_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
+
 	  // Read waveform data from USB interface board.
 	  move_to_dataBuffer();
 
@@ -1174,6 +1162,14 @@ void *acquisition::acquisition_thread_function(void)
 	  advanceLED();
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
 	  checkFifoOK();
+
+	  // double duration_via_sample = db->get_number_samples_read()/(double) boardSampleRate * 1000;
+	  // double duration_via_timespec = acquistion_duration_ts.tv_sec *1000 + ((double)acquistion_duration_ts.tv_nsec)/1000000;
+	  // last_frame_delay_ms=duration_via_timespec - duration_via_sample;
+	  // cout << "duration_via_sample: " << duration_via_sample << ' '
+	  //      << "duration_via_timespec: " << duration_via_timespec << ' '
+	  //      << "last_frame_delay_ms: " << last_frame_delay_ms << "\n";
+	  
 	}
       // take a break here instead of looping 100% of PCU
       nanosleep(&inter_acquisition_sleep_timespec,&req);
@@ -1273,9 +1269,27 @@ int acquisition::move_to_dataBuffer()
       dataQueue.pop();
     }
 
+
+  // check if there are new events to add in the buffer comming from positrack shared memory
+  
+  if(check_positrack)
+    {
+      pthread_mutex_lock(&psm->pmutex);
+      frame_id=psm->id[0];
+      frame_no=psm->frame_no[0];
+      frame_ts=psm->ts[0];
+      pthread_mutex_unlock(&psm->pmutex);
+
+      cout << "frame_id:" << frame_id << ' '
+	   << "frame_no:" << frame_no << ' '
+	   << frame_ts.tv_sec << " " << frame_ts.tv_nsec/1000 << " microsec" << '\n';
+      
+    }
+      
   // move data to the mainWindow data buffer
   db->addNewData(numUsbBlocksToRead*SAMPLES_PER_DATA_BLOCK,localBuffer);
 
+  
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::move_to_dataBuffer()\n";
 #endif
@@ -1352,7 +1366,10 @@ void acquisition::setDacThreshold8(int threshold)
     evalBoard->setDacThreshold(7, threshLevel, threshold >= 0);
 }
 
-
+void acquisition::set_check_positrack(bool val)
+{
+  check_positrack=val;
+}
 
 
 
