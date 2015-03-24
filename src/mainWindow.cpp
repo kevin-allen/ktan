@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <glibmm.h>
 
+#define RECORODING_CHANNELS_ON 37
+
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
 {
@@ -614,12 +616,16 @@ void mainWindow::build_model_recording_treeview()
   Gtk::TreeModel::Row row;
   for(unsigned int i = 0; i < num_channels; i++)
     { 
+
       row = *(m_refRecTreeModel->append());
       std::stringstream ss;
       ss << i;
       row[m_RecordingColumns.m_col_id] = i;
       row[m_RecordingColumns.m_col_name] = ss.str();
-      row[m_RecordingColumns.m_col_selected] = true;
+      if(i < RECORODING_CHANNELS_ON)
+	row[m_RecordingColumns.m_col_selected] = true;
+      else
+	row[m_RecordingColumns.m_col_selected] = false;
     }
   
 #ifdef DEBUG_WIN
@@ -698,7 +704,8 @@ void mainWindow::change_recording_treeview_selection(bool sel)
       Gtk::TreeModel::iterator iter =  m_refRecTreeModel->get_iter(pathlist[i]);
       Gtk::TreeModel::Row row = *iter;
       // now do what you need to do with the data in your TreeModel
-      row[m_RecordingColumns.m_col_selected] = false;
+      row[m_RecordingColumns.m_col_selected] = sel;
+
     } 
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::change_recording_treeview_selection()\n";
