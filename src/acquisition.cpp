@@ -138,28 +138,28 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
 
 
-  // set up shared memory for positrack
-  psm_size=sizeof(positrack_shared_memory);
-  psm_des=shm_open(POSITRACKSHARE, O_CREAT | O_RDWR | O_TRUNC,0600);
-  if(psm_des ==-1)
-    {
-      cerr << "problem with shm_open\n";
-      return ;
-    }
-  if (ftruncate(psm_des, psm_size) == -1)
-    {
-      cerr << "Error with ftruncate\n";
-      return;
-    }
+  // // set up shared memory for positrack
+  // psm_size=sizeof(positrack_shared_memory);
+  // psm_des=shm_open(POSITRACKSHARE, O_CREAT | O_RDWR | O_TRUNC,0600);
+  // if(psm_des ==-1)
+  //   {
+  //     cerr << "problem with shm_open\n";
+  //     return ;
+  //   }
+  // if (ftruncate(psm_des, psm_size) == -1)
+  //   {
+  //     cerr << "Error with ftruncate\n";
+  //     return;
+  //   }
 
-  psm = (positrack_shared_memory*) mmap(0, psm_size, PROT_READ | PROT_WRITE, MAP_SHARED, psm_des, 0);
-  if (psm == MAP_FAILED) 
-    {
-      cerr << "Error with mmap\n";
-      return;
+  // psm = (positrack_shared_memory*) mmap(0, psm_size, PROT_READ | PROT_WRITE, MAP_SHARED, psm_des, 0);
+  // if (psm == MAP_FAILED) 
+  //   {
+  //     cerr << "Error with mmap\n";
+  //     return;
     
-    }
-  psm_init(psm);
+  //   }
+  // psm_init(psm);
   
   
 #ifdef DEBUG_ACQ
@@ -177,17 +177,17 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
-  psm_free(psm);
+  //  psm_free(psm);
 
   // unlink to the shared memory, should it only be done in positrack?
   //shm_unlink(POSITRACKSHARE);
 
 // unmap the shared memory
-  if(munmap(psm, psm_size) == -1) 
-    {
-      cerr << "problem with munmap\n";
-      return;
-    }
+  // if(munmap(psm, psm_size) == -1) 
+  //   {
+  //     cerr << "problem with munmap\n";
+  //     return;
+  //   }
   
   
 
@@ -1168,16 +1168,16 @@ void *acquisition::acquisition_thread_function(void)
 	  // warn the user.
 	  if(check_positrack)
 	    {
-	      pthread_mutex_lock(&psm->pmutex);
-	      frame_id=psm->id[0];
-	      frame_no=psm->frame_no[0];
-	      frame_ts=psm->ts[0];
-	      pthread_mutex_unlock(&psm->pmutex);
-	      if(frame_id!=frame_no)
-		{
-		  cerr << "frame_id:" << frame_id << " is not equal to frame_no:" << frame_no << '\n';
-		  cerr << "there were tracking frames of positrack that were processed before acquisition started\n";
-		}
+	      // pthread_mutex_lock(&psm->pmutex);
+	      // frame_id=psm->id[0];
+	      // frame_no=psm->frame_no[0];
+	      // frame_ts=psm->ts[0];
+	      // pthread_mutex_unlock(&psm->pmutex);
+	      // if(frame_id!=frame_no)
+	      // 	{
+	      // 	  cerr << "frame_id:" << frame_id << " is not equal to frame_no:" << frame_no << '\n';
+	      // 	  cerr << "there were tracking frames of positrack that were processed before acquisition started\n";
+	      // 	}
 	    }
 
 	  // double duration_via_sample = db->get_number_samples_read()/(double) boardSampleRate * 1000;
@@ -1263,7 +1263,7 @@ int acquisition::move_to_dataBuffer()
 	      for (stream = 0; stream < numStreams; ++stream) 
 		{ 
 		  //          (        sample no                  )*   total number channels  + channel no
-		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (channel*stream+channel) ] = 0 - (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
+		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (channel*stream+channel) ] =  (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
 		}
 	    }
 	  ++indexAmp;
@@ -1274,10 +1274,10 @@ int acquisition::move_to_dataBuffer()
        	{
       	  for (channel = 0; channel < 16; ++channel) 
       	    {
-	      if((dataQueue.front().ttlIn[sample] & (1 << channel) ) > 0)
-		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=0;
-	      else
+	      if((dataQueue.front().ttlIn[sample] & (1 << channel) ) > 0) 
 		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=16000;
+	      else
+		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=0;
 	    }
 	}
           

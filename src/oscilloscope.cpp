@@ -541,12 +541,16 @@ int oscilloscope::get_data()
 
   // 3. read the new data, maximum up to complete the current page, all channels, in microvolts
   buffer_ptr=buffer+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
-  int samples_returned=db->getNewData(first_sample,buffer_ptr,samples_to_complete_page,num_channels,all_channels_list,factor_microvolt);
+  int samples_returned=db->getNewDataReverse(first_sample,buffer_ptr,samples_to_complete_page,num_channels,all_channels_list,factor_microvolt);
   if(samples_returned<0)
     {
       cerr << "oscilloscope::get_data(), problem getting new data\n";
       return -1;
     }
+
+
+  
+
   
   new_samples_buffer=new_samples_buffer+samples_returned;
 

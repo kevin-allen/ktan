@@ -253,7 +253,7 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
   return samplesToCopy;
 }
 
-int dataBuffer::getNewData(unsigned long int firstSample, double* data, int maxSamples,int numChannels, unsigned int* channelList, double factor_microvolt)
+int dataBuffer::getNewDataReverse(unsigned long int firstSample, double* data, int maxSamples,int numChannels, unsigned int* channelList, double factor_microvolt)
 { // copy data from the buffer to data
   // returns the number of new samples copied in data
   
@@ -316,7 +316,7 @@ int dataBuffer::getNewData(unsigned long int firstSample, double* data, int maxS
     {// copy the data without wrapping
       for(int sample = 0; sample < samplesToCopy;sample++)
 	for(int channel = 0; channel < numChannels;channel++)
-	  data[(sample*numChannels)+channel]=buffer[(index_copy_start+sample)*number_channels+channelList[channel]]*factor_microvolt;
+	  data[(sample*numChannels)+channel]=0-(buffer[(index_copy_start+sample)*number_channels+channelList[channel]]*factor_microvolt);
       
     }
   else
@@ -324,11 +324,11 @@ int dataBuffer::getNewData(unsigned long int firstSample, double* data, int maxS
       copyAtEnd=max_number_samples_in_buffer-index_copy_start;
       for(int sample = 0; sample < copyAtEnd;sample++)
 	for(int channel = 0; channel < numChannels;channel++)
-	  data[(sample*numChannels)+channel]=buffer[(index_copy_start+sample)*number_channels+channelList[channel]]*factor_microvolt;
+	  data[(sample*numChannels)+channel]=0-(buffer[(index_copy_start+sample)*number_channels+channelList[channel]]*factor_microvolt);
 
       for(int sample = copyAtEnd; sample < samplesToCopy;sample++)
 	for(int channel = 0; channel < numChannels;channel++)
-	  data[(sample*numChannels)+channel]=buffer[(sample-copyAtEnd)*number_channels+channelList[channel]]*factor_microvolt;
+	  data[(sample*numChannels)+channel]=0-(buffer[(sample-copyAtEnd)*number_channels+channelList[channel]]*factor_microvolt);
     }
   
   pthread_mutex_unlock(&data_buffer_mutex);
