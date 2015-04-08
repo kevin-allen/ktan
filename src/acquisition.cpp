@@ -1,4 +1,4 @@
-//#define DEBUG_ACQ
+#define DEBUG_ACQ
 #include "acquisition.h"
 #include "positrack_shared_memory.h"
 #include "rhd2000evalboard.h"
@@ -124,8 +124,12 @@ acquisition::acquisition(dataBuffer* dbuffer)
   // contains only one usb block read.
   numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
   totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
+  
+#ifdef DEBUG_ACQ
+  cerr << numAmplifierChannels << " " << numDigitalInputChannels <<"\n";
+#endif
+  
 
-  //  cerr << numAmplifierChannels << " " << numDigitalInputChannels << " " << numSharedMemoryChannels << "\n";
   
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
@@ -307,14 +311,14 @@ void acquisition::openInterfaceBoard()
   
   // Now that ADC calibration has been performed, we switch to the command sequence
   // that does not execute ADC calibration.
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
   
 
   // command with no fast setttle 
@@ -505,10 +509,7 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
 	      cerr << "Delay: " << delay << " on stream " << stream << " is good." << endl;
 #endif
-
-
-
-	      
+      
 	      numChips++;
 	      sumGoodDelays[stream] = sumGoodDelays[stream] + 1;
 	      if (indexFirstGoodDelay[stream] == -1) 
@@ -539,8 +540,6 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
   cerr << "Number of Intan chips: " << numChips << '\n';
 #endif
-
-
 
 
   // Set cable delay settings that yield good communication with each
@@ -612,6 +611,10 @@ void acquisition::findConnectedAmplifiers()
     {
       if (chipIdOld[stream] == CHIP_ID_RHD2216) 
 	{
+#ifdef DEBUG_ACQ
+	  cerr << "chip id: rhd2216\n";
+#endif
+
 	  numStreamsRequired++;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -621,6 +624,10 @@ void acquisition::findConnectedAmplifiers()
 	}
       if (chipIdOld[stream] == CHIP_ID_RHD2132) 
 	{
+#ifdef DEBUG_ACQ
+	  cerr << "chip id: rhd2132\n";
+#endif
+
 	  numStreamsRequired++;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -629,6 +636,10 @@ void acquisition::findConnectedAmplifiers()
 	}
       if (chipIdOld[stream] == CHIP_ID_RHD2164) 
 	{
+	  
+#ifdef DEBUG_ACQ
+	  cerr << "chip id: rhd2164\n";
+#endif
 	  numStreamsRequired += 2;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -747,6 +758,9 @@ void acquisition::findConnectedAmplifiers()
 // sequences that are used to set RAM registers on the RHD2000 chips.
 void acquisition::changeSampleRate(int sampleRateIndex)
 {
+
+
+  
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::changeSampleRate()\n";
 #endif
@@ -938,21 +952,21 @@ void acquisition::changeSampleRate(int sampleRateIndex)
 
   chipRegisters.setFastSettle(true);
   commandSequenceLength = chipRegisters.createCommandListRegisterConfig(commandList, false);
+
+
   // Upload version with fast settle enabled to AuxCmd3 RAM Bank 2.
   evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 2);
   evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0,commandSequenceLength - 1);
   chipRegisters.setFastSettle(false);
   
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  
-
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
 
   // select the one with fast settle disabled
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,1);
@@ -1263,7 +1277,7 @@ int acquisition::move_to_dataBuffer()
 	      for (stream = 0; stream < numStreams; ++stream) 
 		{ 
 		  //          (        sample no                  )*   total number channels  + channel no
-		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (channel*stream+channel) ] =  (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
+		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (32*stream+channel) ] =  (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
 		}
 	    }
 	  ++indexAmp;
