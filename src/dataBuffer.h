@@ -30,7 +30,7 @@ class dataBuffer
   int getNumChannels();
   void addNewData(int numSamples,short int* data);
   int getNewData(unsigned long int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
-  int getNewData(unsigned long int firstSample,double* data, int maxSamples, int numChannels, unsigned int* channelList, double factor_microvolt);
+  int getNewDataReverse(unsigned long int firstSample,double* data, int maxSamples, int numChannels, unsigned int* channelList, double factor_microvolt);
   void resetData();
   void set_sampling_rate(int sr);
   int get_sampling_rate();

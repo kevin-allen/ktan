@@ -1,5 +1,6 @@
-//#define DEBUG_ACQ
+#define DEBUG_ACQ
 #include "acquisition.h"
+#include "positrack_shared_memory.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
 #include "rhd2000registers.h"
@@ -7,6 +8,14 @@
 #include <stdlib.h> 
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <pthread.h>
+
+
 
 acquisition::acquisition(dataBuffer* dbuffer)
 {
@@ -20,6 +29,11 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   is_acquiring = false;
 
+  // to get tracking data via shared memory
+  useSharedMemeory=true;
+  check_positrack=false; // this is set to true when recording starts
+                         // and back to false when recording ends
+  
   // Default amplifier bandwidth settings
   desiredLowerBandwidth = 0.1;
   desiredUpperBandwidth = 7500.0;
@@ -48,9 +62,8 @@ acquisition::acquisition(dataBuffer* dbuffer)
   for (int i = 0; i < 16; ++i)
     ttlOut[i] = 0;
 
-
   evalBoardMode=0;
-
+  
   // Set up array for the 4 ports
   numPorts=4; 
   portEnabled = new bool[numPorts];
@@ -63,7 +76,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
   manualDelay = new int[4];
   for(int i; i < 4; i++)
     manualDelay[i]=0;
-
 
 
 
@@ -107,14 +119,17 @@ acquisition::acquisition(dataBuffer* dbuffer)
       auxDigOutChannel[i]=0;
     }
   updateAuxDigOut();
-  
-
-  
-  
+    
   // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
   // contains only one usb block read.
   numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
   totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
+  
+#ifdef DEBUG_ACQ
+  cerr << numAmplifierChannels << " " << numDigitalInputChannels <<"\n";
+#endif
+  
+
   
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
@@ -126,18 +141,30 @@ acquisition::acquisition(dataBuffer* dbuffer)
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
 
 
-  // // check the digital input data
-  // int di[16];
-  // for ( int i = 0; i < 1000 ; i++)
+
+  // // set up shared memory for positrack
+  // psm_size=sizeof(positrack_shared_memory);
+  // psm_des=shm_open(POSITRACKSHARE, O_CREAT | O_RDWR | O_TRUNC,0600);
+  // if(psm_des ==-1)
   //   {
-  //     evalBoard->getTtlIn(di);
-  //     for(int j = 0; j < 16; j++)
-  // 	cout << i << " " << j << " " << di[j] << '\n';
-  //     usleep(5000); // allow thread to die
+  //     cerr << "problem with shm_open\n";
+  //     return ;
   //   }
+  // if (ftruncate(psm_des, psm_size) == -1)
+  //   {
+  //     cerr << "Error with ftruncate\n";
+  //     return;
+  //   }
+
+  // psm = (positrack_shared_memory*) mmap(0, psm_size, PROT_READ | PROT_WRITE, MAP_SHARED, psm_des, 0);
+  // if (psm == MAP_FAILED) 
+  //   {
+  //     cerr << "Error with mmap\n";
+  //     return;
+    
+  //   }
+  // psm_init(psm);
   
-
-
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
@@ -154,6 +181,19 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
+  //  psm_free(psm);
+
+  // unlink to the shared memory, should it only be done in positrack?
+  //shm_unlink(POSITRACKSHARE);
+
+// unmap the shared memory
+  // if(munmap(psm, psm_size) == -1) 
+  //   {
+  //     cerr << "problem with munmap\n";
+  //     return;
+  //   }
+  
+  
 
   delete[] dacEnabled;
   delete[] portEnabled;
@@ -271,14 +311,14 @@ void acquisition::openInterfaceBoard()
   
   // Now that ADC calibration has been performed, we switch to the command sequence
   // that does not execute ADC calibration.
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
   
 
   // command with no fast setttle 
@@ -469,10 +509,7 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
 	      cerr << "Delay: " << delay << " on stream " << stream << " is good." << endl;
 #endif
-
-
-
-	      
+      
 	      numChips++;
 	      sumGoodDelays[stream] = sumGoodDelays[stream] + 1;
 	      if (indexFirstGoodDelay[stream] == -1) 
@@ -503,8 +540,6 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
   cerr << "Number of Intan chips: " << numChips << '\n';
 #endif
-
-
 
 
   // Set cable delay settings that yield good communication with each
@@ -576,6 +611,10 @@ void acquisition::findConnectedAmplifiers()
     {
       if (chipIdOld[stream] == CHIP_ID_RHD2216) 
 	{
+#ifdef DEBUG_ACQ
+	  cerr << "chip id: rhd2216\n";
+#endif
+
 	  numStreamsRequired++;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -585,6 +624,10 @@ void acquisition::findConnectedAmplifiers()
 	}
       if (chipIdOld[stream] == CHIP_ID_RHD2132) 
 	{
+#ifdef DEBUG_ACQ
+	  cerr << "chip id: rhd2132\n";
+#endif
+
 	  numStreamsRequired++;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -593,6 +636,10 @@ void acquisition::findConnectedAmplifiers()
 	}
       if (chipIdOld[stream] == CHIP_ID_RHD2164) 
 	{
+	  
+#ifdef DEBUG_ACQ
+	  cerr << "chip id: rhd2164\n";
+#endif
 	  numStreamsRequired += 2;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -711,6 +758,9 @@ void acquisition::findConnectedAmplifiers()
 // sequences that are used to set RAM registers on the RHD2000 chips.
 void acquisition::changeSampleRate(int sampleRateIndex)
 {
+
+
+  
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::changeSampleRate()\n";
 #endif
@@ -902,21 +952,21 @@ void acquisition::changeSampleRate(int sampleRateIndex)
 
   chipRegisters.setFastSettle(true);
   commandSequenceLength = chipRegisters.createCommandListRegisterConfig(commandList, false);
+
+
   // Upload version with fast settle enabled to AuxCmd3 RAM Bank 2.
   evalBoard->uploadCommandList(commandList, Rhd2000EvalBoard::AuxCmd3, 2);
   evalBoard->selectAuxCommandLength(Rhd2000EvalBoard::AuxCmd3, 0,commandSequenceLength - 1);
   chipRegisters.setFastSettle(false);
   
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
-				  fastSettleEnabled ? 2 : 1);
-  
-
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
+  // evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,
+  // 				  fastSettleEnabled ? 2 : 1);
 
   // select the one with fast settle disabled
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3,1);
@@ -1006,6 +1056,7 @@ bool acquisition::start_acquisition()
   // start the board
   evalBoard->setContinuousRunMode(true);
   evalBoard->run();
+  clock_gettime(CLOCK_REALTIME, &acquisition_start_ts); // this is the time the recording started
   is_acquiring = true;
 
 #ifdef DEBUG_ACQ
@@ -1115,6 +1166,9 @@ void *acquisition::acquisition_thread_function(void)
       // If new data is ready, then read it.
       if (newDataReady) 
 	{
+	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data 
+	  acquistion_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
+
 	  // Read waveform data from USB interface board.
 	  move_to_dataBuffer();
 
@@ -1122,6 +1176,31 @@ void *acquisition::acquisition_thread_function(void)
 	  advanceLED();
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
 	  checkFifoOK();
+
+	  // check if we had access to all frames of positrack
+	  // this should be in the recording object as it needs to stop recording and
+	  // warn the user.
+	  if(check_positrack)
+	    {
+	      // pthread_mutex_lock(&psm->pmutex);
+	      // frame_id=psm->id[0];
+	      // frame_no=psm->frame_no[0];
+	      // frame_ts=psm->ts[0];
+	      // pthread_mutex_unlock(&psm->pmutex);
+	      // if(frame_id!=frame_no)
+	      // 	{
+	      // 	  cerr << "frame_id:" << frame_id << " is not equal to frame_no:" << frame_no << '\n';
+	      // 	  cerr << "there were tracking frames of positrack that were processed before acquisition started\n";
+	      // 	}
+	    }
+
+	  // double duration_via_sample = db->get_number_samples_read()/(double) boardSampleRate * 1000;
+	  // double duration_via_timespec = acquistion_duration_ts.tv_sec *1000 + ((double)acquistion_duration_ts.tv_nsec)/1000000;
+	  // last_frame_delay_ms=duration_via_timespec - duration_via_sample;
+	  // cout << "duration_via_sample: " << duration_via_sample << ' '
+	  //      << "duration_via_timespec: " << duration_via_timespec << ' '
+	  //      << "last_frame_delay_ms: " << last_frame_delay_ms << "\n";
+	  
 	}
       // take a break here instead of looping 100% of PCU
       nanosleep(&inter_acquisition_sleep_timespec,&req);
@@ -1198,7 +1277,7 @@ int acquisition::move_to_dataBuffer()
 	      for (stream = 0; stream < numStreams; ++stream) 
 		{ 
 		  //          (        sample no                  )*   total number channels  + channel no
-		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (channel*stream+channel) ] = 0 - (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
+		  localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample)* (totalNumChannels) +   (32*stream+channel) ] =  (dataQueue.front().amplifierData[stream][channel][sample] - 32767);
 		}
 	    }
 	  ++indexAmp;
@@ -1209,10 +1288,10 @@ int acquisition::move_to_dataBuffer()
        	{
       	  for (channel = 0; channel < 16; ++channel) 
       	    {
-	      if((dataQueue.front().ttlIn[sample] & (1 << channel) ) > 0)
-		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=0;
-	      else
+	      if((dataQueue.front().ttlIn[sample] & (1 << channel) ) > 0) 
 		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=16000;
+	      else
+		localBuffer[(block*SAMPLES_PER_DATA_BLOCK+sample) * (totalNumChannels) + numAmplifierChannels + channel]=0;
 	    }
 	}
           
@@ -1221,9 +1300,11 @@ int acquisition::move_to_dataBuffer()
       dataQueue.pop();
     }
 
+    
   // move data to the mainWindow data buffer
   db->addNewData(numUsbBlocksToRead*SAMPLES_PER_DATA_BLOCK,localBuffer);
 
+  
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::move_to_dataBuffer()\n";
 #endif
@@ -1298,5 +1379,62 @@ void acquisition::setDacThreshold8(int threshold)
 {
     int threshLevel = (int) ((double) threshold / 0.195 + 0.5) + 32768;
     evalBoard->setDacThreshold(7, threshLevel, threshold >= 0);
+}
+
+void acquisition::set_check_positrack(bool val)
+{
+  check_positrack=val;
+}
+
+
+
+void psm_init(struct positrack_shared_memory* psm)
+{
+  int i;
+  psm->numframes=POSITRACKSHARENUMFRAMES;
+  for(i = 0 ; i < psm->numframes; i++)
+    {
+      psm->id[i]=0; // set to invalid value
+      psm->frame_no[i]=0;
+      psm->ts[i].tv_sec=0;
+      psm->ts[i].tv_nsec=0;
+      
+    }
+
+  if(psm->is_mutex_allocated==0)
+    {
+      /* Initialise attribute to mutex. */
+      pthread_mutexattr_init(&psm->attrmutex);
+      pthread_mutexattr_setpshared(&psm->attrmutex, PTHREAD_PROCESS_SHARED);
+      /* Initialise mutex. */
+      pthread_mutex_init(&psm->pmutex, &psm->attrmutex);
+      psm->is_mutex_allocated==1;
+    }
+}
+
+void psm_free(struct positrack_shared_memory* psm)
+{
+  if(psm->is_mutex_allocated==1)
+    {
+      pthread_mutex_destroy(&psm->pmutex);
+      pthread_mutexattr_destroy(&psm->attrmutex); 
+    }
+}
+
+void psm_add_frame(struct positrack_shared_memory* psm, unsigned long int frame_no, struct timespec fts)
+{
+  int i;
+  pthread_mutex_lock(&psm->pmutex);
+  // move forward the old frames in the array
+  for(i =psm->numframes-1; i > 0; i--)
+    {
+      psm->id[i]=psm->id[i-1];
+      psm->frame_no[i]=psm->frame_no[i-1];
+      psm->ts[i]=psm->ts[i-1];
+    }
+  psm->id[0]=psm->id[0]+1;
+  psm->frame_no[0]=frame_no;
+  psm->ts[0]=fts;
+  pthread_mutex_unlock(&psm->pmutex);
 }
 

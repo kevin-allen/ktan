@@ -9,13 +9,43 @@
 #define REGISTER_59_MISO_B  58
 #define SAMPLES_PER_DATA_BLOCK  60
 #define ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS 16
-#define ACQUISITION_SLEEP_TIME_MS 5 // if too long could lead to buffer overflow, we make it short to be up to data often
+#define ACQUISITION_SLEEP_TIME_MS 1 // if too long could lead to buffer overflow, we make it short to be up to data often
+
+/**********************************************************
+SYNCHRONIZATION BETWEEN POSITION TRACKING AND RECORDING
+
+The clock on the opal kelly runs faster than
+the system clock on my dell computer.
+This was shown by calculating the time based on 
+sample number and the system time since acquisition started. 
+At beginning of acquisition, the sample time is 
+about 7.5 ms before system time. After 60000 time reading 
+new data (approx 60000 x 720 samples), the sample time
+is 40 ms after system time, which should be impossible if they
+run on the same clock.
+
+If synchronization is done in the software (shared memory), 
+then it needs to take into account the different clocks. 
+But even when correcting for different clock speed, 
+there is still a jitter in the time to get the intan data 
+into the software. So we never know for sure when the data were 
+collected (jitter estimate is from 2 to 10 ms).
+
+So in the end I decided to still use comedi to do the
+synchronization between positrack and ktan.
+
+The only jitter will be in the comedi code and in the time
+to get the camera frame into positrack. This last jitter could
+be estimated and removed.
+
+**********************************************************/
 
 #include <string>
 #include <queue>
 #include "timeKeeper.h"
 #include "dataBuffer.h"
 #include <pthread.h> // to be able to create threads
+#include "positrack_shared_memory.h"
 
 using namespace std;
 class Rhd2000EvalBoard;
@@ -26,7 +56,7 @@ class acquisition
  public:
   acquisition(dataBuffer* datab);
   ~acquisition();
-
+  
   bool start_acquisition();
   bool stop_acquisition();
   bool get_is_acquiring();
@@ -37,13 +67,31 @@ class acquisition
     ((acquisition *)context)->acquisition_thread_function();
   }
   void printLocalBuffer();
+  void set_check_positrack(bool val);
   
-
+  
  private:
   Rhd2000EvalBoard *evalBoard;
   int errorCode;
   bool fastSettleEnabled;
   bool set_successfully;
+
+  // use to detect that the tracking was started before recording
+  struct positrack_shared_memory* psm;
+  bool check_positrack;
+  int psm_size;
+  int psm_des;
+  unsigned long int frame_no;
+  unsigned long int frame_id;
+  struct timespec frame_ts;
+
+  // to compare system and opal clocks
+  struct timespec acquisition_start_ts;
+  struct timespec acquistion_duration_ts;
+  struct timespec now_ts;
+  double last_frame_delay_ms;
+  
+  
   // amplifier settings 
   double desiredDspCutoffFreq;
   double actualDspCutoffFreq;
@@ -105,11 +153,13 @@ class acquisition
  
 
   // variables to operate the acquisition buffer
+  
   int numChips;
   int numAmplifierChannels;
   int numDigitalInputChannels;
   int totalNumChannels;
-
+  bool useSharedMemeory;
+  
   // to play with leds during acquisition
   int ledArray[8];
   int ledIndex;
