@@ -18,9 +18,9 @@
 #include <pthread.h> // to be able to create threads
 
 using namespace std;
-
 class Rhd2000EvalBoard;
 class Rhd2000DataBlock;
+
 class acquisition
 {
  public:
