@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <gtkmm.h>
+#include <sys/statvfs.h>
+
 recording::recording(dataBuffer* datab)
 {
 #ifdef DEBUG_REC
@@ -135,6 +137,16 @@ bool recording::start_recording()
   generate_file_name();
   is_recording=true;
   
+  
+  // check for disk space here
+  struct statvfs info;
+  statvfs (file_name.c_str(), &info);
+  cout << "start recording, f_bfree*f_bsize:" << info.f_bfree*info.f_bsize << '\n';
+
+
+
+
+
   if(open_file()==false)
     {
       cerr << "recording::start_recording(), problem opening file\n";

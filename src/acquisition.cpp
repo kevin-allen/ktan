@@ -78,6 +78,14 @@ acquisition::acquisition(dataBuffer* dbuffer)
     manualDelay[i]=0;
 
 
+  auxDigOutEnabled = new bool[4];
+  auxDigOutChannel = new int[4];
+  for(int i = 0;i<4;i++)
+    {
+      auxDigOutEnabled[i]=false;
+      auxDigOutChannel[i]=0;
+    }
+
 
   evalBoard = new Rhd2000EvalBoard;
   set_successfully=openBoardBit();
@@ -111,13 +119,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
   evalBoard->enableDacHighpassFilter(false);
   evalBoard->setDacHighpassFilter(250.0);
 
-  auxDigOutEnabled = new bool[4];
-  auxDigOutChannel = new int[4];
-  for(int i = 0;i<4;i++)
-    {
-      auxDigOutEnabled[i]=false;
-      auxDigOutChannel[i]=0;
-    }
+
   updateAuxDigOut();
     
   // small buffer where we put the data comming from usb buffer before sending into the mainWindow dataBuffer
@@ -181,20 +183,7 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
-  //  psm_free(psm);
-
-  // unlink to the shared memory, should it only be done in positrack?
-  //shm_unlink(POSITRACKSHARE);
-
-// unmap the shared memory
-  // if(munmap(psm, psm_size) == -1) 
-  //   {
-  //     cerr << "problem with munmap\n";
-  //     return;
-  //   }
   
-  
-
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
@@ -202,6 +191,7 @@ acquisition::~acquisition()
   delete[] manualDelay;
   delete[] auxDigOutEnabled;
   delete[] auxDigOutChannel;
+
   if(localBuffer!=NULL)
     delete[] localBuffer;
   delete evalBoard;
