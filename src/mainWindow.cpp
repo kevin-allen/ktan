@@ -288,20 +288,25 @@ void mainWindow::on_record_toolbutton_toggled()
       acq->set_check_positrack(true);
       acq->start_acquisition();
       pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
-      
 
 #ifdef DEBUG_WIN
       cerr << "start recording\n";
 #endif
 
-      rec->start_recording();
+      if(rec->start_recording()==false)
+	{
+	  cerr << "rec->start_recording returned false, recording aborted\n";
+	  record_toolbutton_connection.disconnect();
+	  record_toolbutton->set_active(false);
+	  record_toolbutton_connection = record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
+	  return;
+	}
       pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
       statusbar_timeout_connection = Glib::signal_timeout().connect(tslot,1000); 
 
-
       if(osc_flag==true)
 	osc->start_oscilloscope();
-
+      
       
     }
 

@@ -1,4 +1,4 @@
-//#define DEBUG_REC
+#define DEBUG_REC
 #include "recording.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -140,17 +140,54 @@ bool recording::start_recording()
   
   // check for disk space here
   struct statvfs info;
-  statvfs (file_name.c_str(), &info);
-  cout << "start recording, f_bfree*f_bsize:" << info.f_bfree*info.f_bsize << '\n';
+  if(statvfs (file_name.c_str(), &info)==-1)
+    {
+      cerr << "recording::start_recording(), problem with statvfs function\n";
+      is_recording=false;
+      return false;
+    }
 
-
-
-
+#ifdef DEBUG_REC
+  cout << "checking for disk space on " << file_name << "\n";
+  printf("f_bsize (block size): %lu\n"
+	 "f_frsize (fragment size): %lu\n"
+	 "f_blocks (size of fs in f_frsize units): %lu\n"
+	 "f_bfree (free blocks): %lu\n"
+	 "f_bavail free blocks for unprivileged users): %lu\n"
+	 "f_files (inodes): %lu\n"
+	 "f_ffree (free inodes): %lu\n"
+	 "f_favail (free inodes for unprivileged users): %lu\n"
+	 "f_fsid (file system ID): %lu\n"
+	 "f_flag (mount flags): %lu\n"
+	 "f_namemax (maximum filename length): %lu\n",
+	 info.f_bsize,
+	 info.f_frsize,
+	 info.f_blocks,
+	 info.f_bfree,
+	 info.f_bavail,
+	 info.f_files,
+	 info.f_ffree,
+	 info.f_favail,
+	 info.f_fsid,
+	 info.f_flag,
+	 info.f_namemax);
+  cout << "info.f_bsize*info.f_blocks:" << info.f_bsize*info.f_blocks/1024 << '\n';
+  cout << "info.f_bsize*info.f_bavail:" << info.f_bsize*info.f_bavail/1024 << '\n';
+#endif
+  
+  if((info.f_bsize*info.f_bavail/1024)< 20000000 ) // 20 Gb minimum
+    {
+      cerr << "recording::start_recording(), not enough free disk space\n";
+      cerr << "disk space for " << file_name << ": " << info.f_bsize*info.f_bavail/1024 << " Kb\n";
+      cerr << "make sure there is at least 20 Gb of free space on this file system\n";
+      is_recording=false;
+      return false;
+    }
 
   if(open_file()==false)
     {
       cerr << "recording::start_recording(), problem opening file\n";
-      is_recording==false;
+      is_recording=false;
       return false;
     }
   clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
@@ -168,10 +205,12 @@ bool recording::stop_recording()
 {
 #ifdef DEBUG_REC
   cerr << "entering recording::stop_recording()\n";
+  cerr << "is_recording:" << is_recording << '\n';
 #endif
   if(is_recording==false)
     {
       cerr << "recording::stop_recording(), is_recording already false\n";
+      return false;
     }
   is_recording=false;
   usleep(100000);
@@ -275,7 +314,7 @@ void *recording::recording_thread_function(void)
 	  if(save_buffer_to_file()!=0)	  // save buffer to file
 	    {
 	      cerr << "recording_thread_function(), problem saving buffer to file\n";
-	      is_recording==false;
+	      is_recording=false;
 	    }
 
 	  // buffer is now empty, check if we need to change to a new file
