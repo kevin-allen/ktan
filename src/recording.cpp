@@ -1,4 +1,4 @@
-#define DEBUG_REC
+//#define DEBUG_REC
 #include "recording.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -47,7 +47,6 @@ recording::recording(dataBuffer* datab)
   is_recording=false;
 
 #ifdef DEBUG_REC
-  cerr << "file_name: " << file_name << '\n';
   cerr << "leaving recording::recording()\n";
 #endif
 }
@@ -140,7 +139,7 @@ bool recording::start_recording()
   
   // check for disk space here
   struct statvfs info;
-  if(statvfs (file_name.c_str(), &info)==-1)
+  if(statvfs (directory_name.c_str(), &info)==-1)
     {
       cerr << "recording::start_recording(), problem with statvfs function\n";
       is_recording=false;
@@ -148,7 +147,7 @@ bool recording::start_recording()
     }
 
 #ifdef DEBUG_REC
-  cout << "checking for disk space on " << file_name << "\n";
+  cout << "checking for disk space on " << directory_name << "\n";
   printf("f_bsize (block size): %lu\n"
 	 "f_frsize (fragment size): %lu\n"
 	 "f_blocks (size of fs in f_frsize units): %lu\n"
@@ -198,7 +197,7 @@ bool recording::start_recording()
 #ifdef DEBUG_REC
   cerr << "leaving recording::start_recording()\n";
 #endif
-
+  return true;
 }
 
 bool recording::stop_recording()
