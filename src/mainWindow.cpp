@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <glibmm.h>
 
-#define RECORODING_CHANNELS_ON 37
+#define RECORODING_CHANNELS_ON 65
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
@@ -625,10 +625,11 @@ void mainWindow::build_model_recording_treeview()
       ss << i;
       row[m_RecordingColumns.m_col_id] = i;
       row[m_RecordingColumns.m_col_name] = ss.str();
-      if(i < RECORODING_CHANNELS_ON)
+      if(i < RECORODING_CHANNELS_ON && (i<40||i>55)) // to work with 48 drives on 64 channels amplifier
 	row[m_RecordingColumns.m_col_selected] = true;
       else
 	row[m_RecordingColumns.m_col_selected] = false;
+
     }
   
 #ifdef DEBUG_WIN
