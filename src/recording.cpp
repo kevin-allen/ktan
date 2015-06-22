@@ -87,9 +87,9 @@ void recording::generate_file_name()
   
 
   if(file_index<10)
-    ss << directory_name <<  file_base << "-" << date_string << "_0" << file_index << ".dat";
+    ss << directory_name << file_base << "-" << date_string << "_0" << file_index << ".dat";
   else
-    ss << file_name << directory_name << file_base << "-" << date_string << "_" << file_index << ".dat";
+    ss << directory_name << file_base << "-" << date_string << "_" << file_index << ".dat";
 
   file_name=ss.str();
 }
@@ -174,7 +174,7 @@ bool recording::start_recording()
   cout << "info.f_bsize*info.f_bavail:" << info.f_bsize*info.f_bavail/1024 << '\n';
 #endif
   
-  if((info.f_bsize*info.f_bavail/1024)< 20000000 ) // 20 Gb minimum
+  if((info.f_bsize*info.f_bavail/1024)< 20000000 ) // 20 Gb free space minimum
     {
       cerr << "recording::start_recording(), not enough free disk space\n";
       cerr << "disk space for " << file_name << ": " << info.f_bsize*info.f_bavail/1024 << " Kb\n";
