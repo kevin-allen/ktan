@@ -13,7 +13,8 @@
 #include <stdio.h>
 #include <glibmm.h>
 
-#define RECORODING_CHANNELS_ON 65
+#define RECORODING_CHANNELS_ON 37
+#define MAX_RECORDING_TIME_MIN 20
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
@@ -149,11 +150,14 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
 
 
   // set max recording time
-  max_recording_time_spinbutton->set_value(20);
+  max_recording_time_spinbutton->set_value(MAX_RECORDING_TIME_MIN);
 
+  
   build_model_recording_treeview();
   build_model_oscilloscope_all_treeview();
   build_model_oscilloscope_group_treeview();
+
+  
   
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::mainWindow()\n";
@@ -629,8 +633,9 @@ void mainWindow::build_model_recording_treeview()
 	row[m_RecordingColumns.m_col_selected] = true;
       else
 	row[m_RecordingColumns.m_col_selected] = false;
-
     }
+
+    update_recording_channels();  
   
 #ifdef DEBUG_WIN
   cerr << "leave mainWindow::build_model_recording_treeview()\n";
