@@ -48,9 +48,9 @@ be estimated and removed.
 #include "positrack_shared_memory.h"
 
 using namespace std;
-
 class Rhd2000EvalBoard;
 class Rhd2000DataBlock;
+
 class acquisition
 {
  public:

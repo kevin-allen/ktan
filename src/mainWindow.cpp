@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <glibmm.h>
 
-#define RECORODING_CHANNELS_ON 37
+#define RECORODING_CHANNELS_ON 65
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
@@ -86,10 +86,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   recording_menuitem->signal_activate().connect(sigc::mem_fun(*this, &mainWindow::on_recording_menuitem_activate));
   group_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_group_spinbutton_value_changed));
   osc_group_preference_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_osc_group_preference_spinbutton_value_changed));
-
   window->signal_delete_event().connect(sigc::mem_fun(*this, &mainWindow::on_window_delete_event));
   
-
   db=NULL;
   acq=NULL;
   rec=NULL;
@@ -290,20 +288,25 @@ void mainWindow::on_record_toolbutton_toggled()
       acq->set_check_positrack(true);
       acq->start_acquisition();
       pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
-      
 
 #ifdef DEBUG_WIN
       cerr << "start recording\n";
 #endif
 
-      rec->start_recording();
+      if(rec->start_recording()==false)
+	{
+	  cerr << "rec->start_recording returned false, recording aborted\n";
+	  record_toolbutton_connection.disconnect();
+	  record_toolbutton->set_active(false);
+	  record_toolbutton_connection = record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
+	  return;
+	}
       pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
       statusbar_timeout_connection = Glib::signal_timeout().connect(tslot,1000); 
 
-
       if(osc_flag==true)
 	osc->start_oscilloscope();
-
+      
       
     }
 
@@ -622,10 +625,11 @@ void mainWindow::build_model_recording_treeview()
       ss << i;
       row[m_RecordingColumns.m_col_id] = i;
       row[m_RecordingColumns.m_col_name] = ss.str();
-      if(i < RECORODING_CHANNELS_ON)
+      if(i < RECORODING_CHANNELS_ON && (i<40||i>55)) // to work with 48 drives on 64 channels amplifier
 	row[m_RecordingColumns.m_col_selected] = true;
       else
 	row[m_RecordingColumns.m_col_selected] = false;
+
     }
   
 #ifdef DEBUG_WIN
