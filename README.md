@@ -1,6 +1,6 @@
 # ktan
 
-ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies. The low level code to interface with the board comes from the software RHD2000 interface software of Intan Technologies. The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Fredora 19 and on Ubuntu 14.04 LTS.
+ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies. The low level code to interface with the board comes from the RHD2000 interface software of Intan Technologies. The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Fredora 19 and on Ubuntu 14.04 LTS.
 
 # Features
 
