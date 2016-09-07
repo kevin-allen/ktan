@@ -1,6 +1,5 @@
 //#define DEBUG_ACQ
 #include "acquisition.h"
-#include "positrack_shared_memory.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
 #include "rhd2000registers.h"
@@ -29,11 +28,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   is_acquiring = false;
 
-  // to get tracking data via shared memory
-  useSharedMemeory=true;
-  check_positrack=false; // this is set to true when recording starts
-                         // and back to false when recording ends
-  
   // Default amplifier bandwidth settings
   desiredLowerBandwidth = 0.1;
   desiredUpperBandwidth = 7500.0;
@@ -141,31 +135,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
   inter_acquisition_sleep_timespec=tk.set_timespec_from_ms(inter_acquisition_sleep_ms);
   pause_restart_acquisition_thread_ms=100;
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
-
-
-
-  // // set up shared memory for positrack
-  // psm_size=sizeof(positrack_shared_memory);
-  // psm_des=shm_open(POSITRACKSHARE, O_CREAT | O_RDWR | O_TRUNC,0600);
-  // if(psm_des ==-1)
-  //   {
-  //     cerr << "problem with shm_open\n";
-  //     return ;
-  //   }
-  // if (ftruncate(psm_des, psm_size) == -1)
-  //   {
-  //     cerr << "Error with ftruncate\n";
-  //     return;
-  //   }
-
-  // psm = (positrack_shared_memory*) mmap(0, psm_size, PROT_READ | PROT_WRITE, MAP_SHARED, psm_des, 0);
-  // if (psm == MAP_FAILED) 
-  //   {
-  //     cerr << "Error with mmap\n";
-  //     return;
-    
-  //   }
-  // psm_init(psm);
   
   
 #ifdef DEBUG_ACQ
@@ -1166,30 +1135,6 @@ void *acquisition::acquisition_thread_function(void)
 	  advanceLED();
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
 	  checkFifoOK();
-
-	  // check if we had access to all frames of positrack
-	  // this should be in the recording object as it needs to stop recording and
-	  // warn the user.
-	  if(check_positrack)
-	    {
-	      // pthread_mutex_lock(&psm->pmutex);
-	      // frame_id=psm->id[0];
-	      // frame_no=psm->frame_no[0];
-	      // frame_ts=psm->ts[0];
-	      // pthread_mutex_unlock(&psm->pmutex);
-	      // if(frame_id!=frame_no)
-	      // 	{
-	      // 	  cerr << "frame_id:" << frame_id << " is not equal to frame_no:" << frame_no << '\n';
-	      // 	  cerr << "there were tracking frames of positrack that were processed before acquisition started\n";
-	      // 	}
-	    }
-
-	  // double duration_via_sample = db->get_number_samples_read()/(double) boardSampleRate * 1000;
-	  // double duration_via_timespec = acquistion_duration_ts.tv_sec *1000 + ((double)acquistion_duration_ts.tv_nsec)/1000000;
-	  // last_frame_delay_ms=duration_via_timespec - duration_via_sample;
-	  // cout << "duration_via_sample: " << duration_via_sample << ' '
-	  //      << "duration_via_timespec: " << duration_via_timespec << ' '
-	  //      << "last_frame_delay_ms: " << last_frame_delay_ms << "\n";
 	  
 	}
       // take a break here instead of looping 100% of PCU
@@ -1371,60 +1316,4 @@ void acquisition::setDacThreshold8(int threshold)
     evalBoard->setDacThreshold(7, threshLevel, threshold >= 0);
 }
 
-void acquisition::set_check_positrack(bool val)
-{
-  check_positrack=val;
-}
-
-
-
-void psm_init(struct positrack_shared_memory* psm)
-{
-  int i;
-  psm->numframes=POSITRACKSHARENUMFRAMES;
-  for(i = 0 ; i < psm->numframes; i++)
-    {
-      psm->id[i]=0; // set to invalid value
-      psm->frame_no[i]=0;
-      psm->ts[i].tv_sec=0;
-      psm->ts[i].tv_nsec=0;
-      
-    }
-
-  if(psm->is_mutex_allocated==0)
-    {
-      /* Initialise attribute to mutex. */
-      pthread_mutexattr_init(&psm->attrmutex);
-      pthread_mutexattr_setpshared(&psm->attrmutex, PTHREAD_PROCESS_SHARED);
-      /* Initialise mutex. */
-      pthread_mutex_init(&psm->pmutex, &psm->attrmutex);
-      psm->is_mutex_allocated==1;
-    }
-}
-
-void psm_free(struct positrack_shared_memory* psm)
-{
-  if(psm->is_mutex_allocated==1)
-    {
-      pthread_mutex_destroy(&psm->pmutex);
-      pthread_mutexattr_destroy(&psm->attrmutex); 
-    }
-}
-
-void psm_add_frame(struct positrack_shared_memory* psm, unsigned long int frame_no, struct timespec fts)
-{
-  int i;
-  pthread_mutex_lock(&psm->pmutex);
-  // move forward the old frames in the array
-  for(i =psm->numframes-1; i > 0; i--)
-    {
-      psm->id[i]=psm->id[i-1];
-      psm->frame_no[i]=psm->frame_no[i-1];
-      psm->ts[i]=psm->ts[i-1];
-    }
-  psm->id[0]=psm->id[0]+1;
-  psm->frame_no[0]=frame_no;
-  psm->ts[0]=fts;
-  pthread_mutex_unlock(&psm->pmutex);
-}
 

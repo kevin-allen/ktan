@@ -243,7 +243,6 @@ void mainWindow::on_record_toolbutton_toggled()
       cerr << "recording is running, stop it\n";
 #endif
       rec->stop_recording();
-      acq->set_check_positrack(false);
       
       file_base_entry->set_text(rec->get_file_base());
       trial_spinbutton->set_value(rec->get_file_index());
@@ -289,7 +288,6 @@ void mainWindow::on_record_toolbutton_toggled()
 	  return;
 	}
 
-      acq->set_check_positrack(true);
       acq->start_acquisition();
       pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
 
