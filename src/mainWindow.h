@@ -140,6 +140,12 @@ class mainWindow: public Gtk::Window
   void on_remove_channel_button_clicked();
   void copy_osc_group_tree_model_into_channel_group();
   bool on_window_delete_event(GdkEventAny* event);
+
+
+  void start_oscilloscope();
+  void stop_oscilloscope();
+  void start_recording();
+  void stop_recording();
 };
 
 #endif // MAINWINDOW_H
