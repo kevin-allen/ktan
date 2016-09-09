@@ -1,4 +1,4 @@
-#define DEBUG_SHARE
+//#define DEBUG_SHARE
 #include "shared_memory.h"
 #include <iostream>
 #include <stdlib.h> 
@@ -72,3 +72,9 @@ int shared_memory::get_start_osc(){return ksm->start_osc;}
 int shared_memory::get_stop_osc(){return ksm->stop_osc;}
 int shared_memory::get_start_rec(){return ksm->start_rec;}
 int shared_memory::get_stop_rec(){return ksm->stop_rec;}
+
+void shared_memory::set_start_osc(int val){ksm->start_osc=val;}
+void shared_memory::set_stop_osc(int val){ksm->stop_osc=val;}
+void shared_memory::set_start_rec(int val){ksm->start_rec=val;}
+void shared_memory::set_stop_rec(int val){ksm->stop_rec=val;}
+

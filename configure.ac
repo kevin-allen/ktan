@@ -1,12 +1,12 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.64)
-AC_INIT([ktan],[0.1],[allen@uni-heidelberg.de],[ktan],[])
+AC_INIT([ktan],[0.1],[allen@uni-heidelberg.de],[ktan],[https://github.com/kevin-allen/ktan])
 AC_COPYRIGHT([Copyright (C) 2011 Kevin Allen])
 AM_INIT_AUTOMAKE([-Wall -Werror])
 AC_CONFIG_SRCDIR([src/main.cpp])
 AC_CONFIG_HEADERS([config.h]) 
 AC_DEFINE([PACKAGE_COPYRIGHT],["Copyright (C) 2013 Kevin Allen"],[Copyright for the package])
-AC_PROG_CC # check for c compiler
+#AC_PROG_CC # check for c compiler
 AC_PROG_CXX # check for c++ compiler
 AM_PROG_CC_STDC
 AC_PROG_SED

@@ -15,8 +15,6 @@ struct ktan_sm_struct
   pthread_mutex_t pmutex;
 };
 
-
-
 class shared_memory
 {
  public:
@@ -26,6 +24,11 @@ class shared_memory
   int get_stop_osc();
   int get_start_rec();
   int get_stop_rec();
+  void set_start_osc(int val);
+  void set_stop_osc(int val);
+  void set_start_rec(int val);
+  void set_stop_rec(int val);
+
  private:
   struct ktan_sm_struct* ksm; // to share memory with other processes
   int shared_memory_size;

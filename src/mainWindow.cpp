@@ -311,11 +311,29 @@ bool mainWindow::on_sm_timeout()
 #ifdef DEBUG_WIN
   cerr << "entering mainWindow::on_sm_timeout()\n";
 #endif
+
   cout << sm->get_start_osc() << " "
        << sm->get_stop_osc() << " "
        << sm->get_start_rec() << " "
        << sm->get_stop_rec() << '\n';
   
+  if(sm->get_start_osc()==1){
+    // start oscilloscope
+    sm->set_start_osc(0);
+  }
+  if(sm->get_stop_osc()==1){
+    // stop oscilloscope
+    sm->set_stop_osc(0);
+  }
+  if(sm->get_start_rec()==1){
+    // start recording
+    sm->set_start_rec(0);
+  }
+  if(sm->get_stop_rec()==1){
+    // stop recording
+    sm->set_stop_rec(0);
+  }
+  return true;
 }
 bool mainWindow::on_statusbar_timeout()
 {
