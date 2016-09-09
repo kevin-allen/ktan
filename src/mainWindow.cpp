@@ -64,8 +64,6 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   window->set_icon(pixbuf);
 
 
-
-
   
   // connect signals to functions
   play_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_play_toolbutton_toggled));
@@ -93,6 +91,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   acq=NULL;
   rec=NULL;
   osc=NULL;
+  sm=NULL;
 
   db = new dataBuffer; // buffer that holds the latest data acquired by acquisition object
   acq = new acquisition(db); // pass a dataBuffer as a pointer to the acquisition object
@@ -108,33 +107,20 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
       return;
     }
   board_is_there=true;
-  
-  
 
   
   rec = new recording(db); // pass a dataBuffer as a pointer to the recording object
   osc = new oscilloscope(db,drawing_area);
   num_channels=db->getNumChannels();
 
-  
-  // // start data acquisition on the board
-  //  acq->start_acquisition();
-  // //start a thread that will get the data comming from usb and put them into db
-  //pthread_create(&acquisition_thread, NULL, &acquisition::acquisition_thread_helper, acq);
-  
-  //rec->start_recording();
-  //pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
-  //sleep(5);
-  // // stop acquisition, the acquisition thread will die
-  //acq->stop_acquisition();
-  //rec->stop_recording();
-
   file_base_entry->set_text(rec->get_file_base());
   trial_spinbutton->set_value(rec->get_file_index());
   
   // for timer
   tslot = sigc::mem_fun(*this, &mainWindow::on_statusbar_timeout);
-
+  tslot_sm=sigc::mem_fun(*this, &mainWindow::on_sm_timeout);
+  // create the shared memory, for triggering start and stop of recording
+  sm= new shared_memory;
 
 
   // set group spinbutton, what is show is index of group
@@ -158,7 +144,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   build_model_oscilloscope_group_treeview();
 
   
-  
+  sm_timeout_connection = Glib::signal_timeout().connect(tslot_sm,500); 
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::mainWindow()\n";
 #endif
@@ -170,6 +156,8 @@ mainWindow::~mainWindow()
   cerr << "entering mainWindow::~mainWindow()\n";
 #endif
 
+  sm_timeout_connection.disconnect();
+  
   if(acq!=NULL)
     delete acq;
   if(rec!=NULL)
@@ -178,7 +166,9 @@ mainWindow::~mainWindow()
     delete osc;
   if(db!=NULL)
     delete db;
-
+  if(sm!=NULL)
+    delete sm;
+  
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::~mainWindow()\n";
 #endif
@@ -316,7 +306,17 @@ void mainWindow::on_record_toolbutton_toggled()
   cerr << "leaving mainWindow::on_record_toolbutton_toggled()\n";
 #endif
 }
-
+bool mainWindow::on_sm_timeout()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::on_sm_timeout()\n";
+#endif
+  cout << sm->get_start_osc() << " "
+       << sm->get_stop_osc() << " "
+       << sm->get_start_rec() << " "
+       << sm->get_stop_rec() << '\n';
+  
+}
 bool mainWindow::on_statusbar_timeout()
 {
 #ifdef DEBUG_WIN

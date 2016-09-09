@@ -7,6 +7,9 @@
 #include "oscilloscope.h"
 #include "timeKeeper.h"
 #include "dataBuffer.h"
+#include "shared_memory.h"
+
+
 
 
 class mainWindow: public Gtk::Window
@@ -16,6 +19,7 @@ class mainWindow: public Gtk::Window
   dataBuffer* db; // data buffer not deutsche bahn
   recording* rec;
   oscilloscope* osc;
+  shared_memory* sm;
   pthread_t acquisition_thread;
   int acquisition_thread_id;
   pthread_t recording_thread;
@@ -70,7 +74,9 @@ class mainWindow: public Gtk::Window
   Gtk::SpinButton* group_spinbutton;
   Gtk::SpinButton* osc_group_preference_spinbutton;
   sigc::slot<bool> tslot;
+  sigc::slot<bool> tslot_sm;
   sigc::connection statusbar_timeout_connection; // for timeout
+  sigc::connection sm_timeout_connection; // for timeout
    
   Gtk::DrawingArea* drawing_area;
 
@@ -127,6 +133,7 @@ class mainWindow: public Gtk::Window
   void build_model_oscilloscope_group_treeview();
   bool check_file_overwrite();
   bool on_statusbar_timeout();
+  bool on_sm_timeout();
   void on_group_spinbutton_value_changed();
   void on_osc_group_preference_spinbutton_value_changed();
   void on_add_channel_button_clicked();
