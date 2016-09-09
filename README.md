@@ -15,7 +15,9 @@ The installation notes are for a computer running Fedora 19 or above.
 
 Get the source code from the github directory: `git clone https://github.com/kevin-allen/ktan.git`
 
-Install the gtkmm30-devel package for your computer: `yum install gtkmm30-devel.x86_64`
+Install the gtkmm30-devel package for your computer.
+Fedora: `yum install gtkmm30-devel.x86_64`
+Ubuntu: `sudo apt-get install libgtkmm-3.0`
 
 Go into the source directory and run: `./autogen.sh;./configure; make; su -; make install`
 
