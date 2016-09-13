@@ -1017,11 +1017,9 @@ bool acquisition::start_acquisition()
   evalBoard->run();
   clock_gettime(CLOCK_REALTIME, &acquisition_start_ts); // this is the time the recording started
   is_acquiring = true;
-
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::start_acquisition()\n";
 #endif
-
   return true;
 }
 
@@ -1057,13 +1055,9 @@ bool acquisition::stop_acquisition()
   cerr << "stop_acquisition: flush()\n";
 #endif
 
-
-
   // Flush USB FIFO on XEM6010
   evalBoard->flush();
-  turnOffLED();
-
-  
+  turnOffLED();  
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::stop_acquisition()\n";
 #endif
@@ -1076,74 +1070,37 @@ void acquisition::checkFifoOK()
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::checkFifoOK()\n";
 #endif
-
   // Check the number of words stored in the Opal Kelly USB interface FIFO.
   wordsInFifo = evalBoard->numWordsInFifo();
   latency = 1000.0 * Rhd2000DataBlock::getSamplesPerDataBlock() * (wordsInFifo / dataBlockSize) * samplePeriod;
   fifoPercentageFull = 100.0 * wordsInFifo / fifoCapacity;
-  
+
+  //cerr << "fifo %:" << fifoPercentageFull << '\n';
   // Alert the user if the number of words in the FIFO is getting to be significant
   // or nearing FIFO capacity.
   if (latency > 25.0) 
     cerr << "fifo latency: " << latency << ", this is too long\n";
-  if (fifoPercentageFull > 75.0) 
+  if (fifoPercentageFull > 5.0) 
     cerr << "fifo percentage full: " << fifoPercentageFull << "%\n";
-  
+
   // If the USB interface FIFO (on the FPGA board) exceeds 99% full, halt
   // data acquisition and display a warning message.
-  if (fifoPercentageFull > 99.0) 
+  if (fifoPercentageFull > 50.0) 
     {
       is_acquiring = false;
       // Stop data acquisition
       evalBoard->setContinuousRunMode(false);
       evalBoard->setMaxTimeStep(0);
-      // Turn off LED.
+       // Flush USB FIFO on XEM6010
+      evalBoard->flush();
       turnOffLED();
       // warn user
       cerr << "USB Buffer Overrun Error\n";
       cerr << "Acquisition was stop\n";
-      cerr << "This happens when the host computer \n"
-	   << "cannot keep up with the data streaming from the interface board.\n";
     }
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::checkFifoOK()\n";
 #endif
-
-}
-
-void *acquisition::acquisition_thread_function(void)
-{
-#ifdef DEBUG_ACQ
-  cerr << "entering acquisition::acquisition_thread_function()\n";
-#endif
-
-  ledIndex=0;
-  while(is_acquiring==true)
-    {
-      // this puts the new usb blocks into dataQueue 
-      newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
-      // If new data is ready, then read it.
-      if (newDataReady) 
-	{
-	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data 
-	  acquistion_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
-
-	  // Read waveform data from USB interface board.
-	  move_to_dataBuffer();
-
-	  // play with led to impress visitors
-	  advanceLED();
-	  // check if we are fast enough to prevent buffer overflow in opal kelly board
-	  checkFifoOK();
-	  
-	}
-      // take a break here instead of looping 100% of PCU
-      nanosleep(&inter_acquisition_sleep_timespec,&req);
-    }
-#ifdef DEBUG_ACQ
-  cerr << "leaving acquisition::acquisition_thread_function()\n";
-#endif
-
 }
 
 void acquisition::advanceLED()
@@ -1183,7 +1140,39 @@ void acquisition::turnOffLED()
 }
 
 
+void *acquisition::acquisition_thread_function(void)
+{
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition_thread_function()\n";
+#endif
 
+  ledIndex=0;
+  while(is_acquiring==true)
+    {
+      // this puts the new usb blocks into dataQueue 
+      newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
+      // If new data is ready, then read it.
+      if (newDataReady) 
+	{
+	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data 
+	  acquistion_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
+	  //cerr << "new data at " << acquistion_duration_ts.tv_sec << " " << acquistion_duration_ts.tv_nsec/1000000 << '\n';
+	  // Read waveform data from USB interface board.
+	  move_to_dataBuffer();
+	  // play with led to impress visitors
+	  advanceLED();
+	  // check if we are fast enough to prevent buffer overflow in opal kelly board
+	  checkFifoOK();
+	  
+	}
+      // take a break here instead of looping 100% of PCU
+      nanosleep(&inter_acquisition_sleep_timespec,&req);
+    }
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::acquisition_thread_function()\n";
+#endif
+
+}
 
 
 // Reads numBlocks blocks of raw USB data stored in a queue of Rhd2000DataBlock
@@ -1234,11 +1223,9 @@ int acquisition::move_to_dataBuffer()
       numBlocksLoaded++;
       dataQueue.pop();
     }
-
     
   // move data to the mainWindow data buffer
   db->addNewData(numUsbBlocksToRead*SAMPLES_PER_DATA_BLOCK,localBuffer);
-
   
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::move_to_dataBuffer()\n";

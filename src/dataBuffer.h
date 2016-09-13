@@ -51,7 +51,6 @@ class dataBuffer
   int index_copy_start;
   int copyAtEnd;
   int sampling_rate; // in Hz;
-  
 };
 
 

@@ -9,8 +9,7 @@
 #define REGISTER_59_MISO_B  58
 #define SAMPLES_PER_DATA_BLOCK  60
 #define ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS 16
-#define ACQUISITION_SLEEP_TIME_MS 1 // if too long could lead to buffer overflow, we make it short to be up to data often
-
+#define ACQUISITION_SLEEP_TIME_MS 0.5 // if > 2 and smaller than 20, I get problem with buffer overflow. don't know why
 
 #include <string>
 #include <queue>

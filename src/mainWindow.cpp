@@ -134,7 +134,6 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   osc_group_preference_adjustment->set_upper(osc->get_num_groups()-1); 
   osc_group_preference_spinbutton->set_value(0);
 
-
   // set max recording time
   max_recording_time_spinbutton->set_value(MAX_RECORDING_TIME_MIN);
 

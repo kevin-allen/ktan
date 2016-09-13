@@ -84,8 +84,7 @@ class recording
   unsigned long int number_samples_saved; // this is the 0-based index of first sample in the recording buffer
   unsigned long int number_samples_saved_current_file;
   double recording_time_sec;
+  pthread_mutex_t rec_mutex;
 };
-
-
 
 #endif

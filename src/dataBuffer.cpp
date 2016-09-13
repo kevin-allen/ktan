@@ -46,14 +46,14 @@ void dataBuffer::resetData()
   cerr << "entering dataBuffer::resetData()\n";
 #endif
 
+  pthread_mutex_lock(&data_buffer_mutex);
   number_samples_read=0; // total samples read since acq started
   oldest_sample_number=0; // oldest sample number currently in buffer
   number_samples_in_buffer=0; // number of valid samples in buffer
   index_next_sample=0;
-
+  pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "pthread_mutex_unlock &data_buffer_mutex\n";
-  // pthread_mutex_unlock(&data_buffer_mutex);
 #endif
 
 #ifdef DEBUG_BUF
@@ -74,9 +74,10 @@ void dataBuffer::setNumChannels(int numChannels)
       cerr << "dataBuffer::setNumChannels, numChannels should be larger than 0 but is " << numChannels << '\n';
       return;
     }
+  pthread_mutex_lock(&data_buffer_mutex);
   number_channels=numChannels;
   max_number_samples_in_buffer=buffer_size/number_channels; // number of valid samples in buffer
-
+  pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::setNumChannels(int )\n";
 #endif
