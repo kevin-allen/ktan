@@ -21,4 +21,6 @@ Ubuntu: `sudo apt-get install libgtkmm-3.0`
 
 Go into the source directory and run: `./autogen.sh;./configure; make; su -; make install`
 
- 
+# More information
+
+Documentation is available as a [wiki page](https://github.com/kevin-allen/ktan/wiki)
