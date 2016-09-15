@@ -26,6 +26,7 @@ class mainWindow: public Gtk::Window
   int recording_thread_id;
   int num_channels;
   bool board_is_there;
+  char* home_directory;
   
  public:
   mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);//constructor

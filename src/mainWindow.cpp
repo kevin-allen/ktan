@@ -12,8 +12,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <glibmm.h>
+#include <pwd.h>
+#include <mcheck.h>
+#include <fstream>
 
-#define RECORODING_CHANNELS_ON 37
+#define RECORDING_CHANNELS_ON 37
 #define MAX_RECORDING_TIME_MIN 20
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
@@ -86,6 +89,13 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   group_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_group_spinbutton_value_changed));
   osc_group_preference_spinbutton->signal_value_changed().connect(sigc::mem_fun(*this, &mainWindow::on_osc_group_preference_spinbutton_value_changed));
   window->signal_delete_event().connect(sigc::mem_fun(*this, &mainWindow::on_window_delete_event));
+
+  // get the home directory
+  struct passwd *p;
+  char *username=getenv("USER");
+  p=getpwnam(username);
+  home_directory=strcat(p->pw_dir,"/");
+
   
   db=NULL;
   acq=NULL;
@@ -641,22 +651,55 @@ void mainWindow::build_model_recording_treeview()
 
   // fill up the model
   Gtk::TreeModel::Row row;
-  for(unsigned int i = 0; i < num_channels; i++)
-    { 
+  char* config_file_name=(char*)"ktan.recording.channels";
+  config_file_name=strcat(home_directory,config_file_name);
+  int rec_channels[256];
+  int num_rec_channels=0;
+  int in_list = 0;
 
-      row = *(m_refRecTreeModel->append());
-      std::stringstream ss;
-      ss << i;
-      row[m_RecordingColumns.m_col_id] = i;
-      row[m_RecordingColumns.m_col_name] = ss.str();
-      if(i < RECORODING_CHANNELS_ON && (i<40||i>55)) // to work with 48 drives on 64 channels amplifier
-	row[m_RecordingColumns.m_col_selected] = true;
-      else
-	row[m_RecordingColumns.m_col_selected] = false;
+  ifstream file(config_file_name);
+  if(file.is_open()==TRUE)
+    {
+      cerr << "reading recording channels from " << config_file_name << '\n';
+      while (file >> rec_channels[num_rec_channels]&&num_rec_channels<256)
+	{
+	  num_rec_channels++;
+	}
+
+      for(unsigned int i = 0; i < num_channels; i++)
+	{ 
+	  row = *(m_refRecTreeModel->append());
+	  std::stringstream ss;
+	  ss << i;
+	  row[m_RecordingColumns.m_col_id] = i;
+	  row[m_RecordingColumns.m_col_name] = ss.str();
+	  in_list=0;
+	  for(int j = 0; j < num_rec_channels;j++){
+	    if(rec_channels[j]==i)
+	      in_list=1;
+	  }
+	  if(in_list==1) // to work with 48 drives on 64 channels amplifier
+	    row[m_RecordingColumns.m_col_selected] = true;
+	  else
+	    row[m_RecordingColumns.m_col_selected] = false;
+	}
     }
-
-    update_recording_channels();  
-  
+  else
+    {
+      for(unsigned int i = 0; i < num_channels; i++)
+	{ 
+	  row = *(m_refRecTreeModel->append());
+	  std::stringstream ss;
+	  ss << i;
+	  row[m_RecordingColumns.m_col_id] = i;
+	  row[m_RecordingColumns.m_col_name] = ss.str();
+	  if(i < RECORDING_CHANNELS_ON && (i<40||i>55)) // to work with 48 drives on 64 channels amplifier
+	    row[m_RecordingColumns.m_col_selected] = true;
+	  else
+	    row[m_RecordingColumns.m_col_selected] = false;
+	}
+    }
+  update_recording_channels();  
 #ifdef DEBUG_WIN
   cerr << "leave mainWindow::build_model_recording_treeview()\n";
 #endif
