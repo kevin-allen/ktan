@@ -73,12 +73,13 @@ void recording::set_file_base()
 {
   struct passwd *p;
   char *username=getenv("USER");
-  char *home_directory;
+  char hd[255];
   p=getpwnam(username);
-  home_directory=strcat(p->pw_dir,"/");
+  strcpy(hd, p->pw_dir);
+  strcat(hd,"/");
   
   char* base_file_name=(char*)"ktan.file.base";
-  base_file_name=strcat(home_directory,base_file_name);
+  base_file_name=strcat(hd,base_file_name);
   
   ifstream file(base_file_name);
   if(file.is_open()==TRUE)
@@ -89,7 +90,10 @@ void recording::set_file_base()
     {
       file_base="dino1";
     }
+
+  file.close();
 }
+
 void recording::set_date_string()
 {
   std::stringstream syear;

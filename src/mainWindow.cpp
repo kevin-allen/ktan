@@ -94,7 +94,8 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   struct passwd *p;
   char *username=getenv("USER");
   p=getpwnam(username);
-  home_directory=strcat(p->pw_dir,"/");
+  strcpy(home_directory,p->pw_dir);
+  strcat(home_directory,"/");
   //cerr << "home directory: " << home_directory << '\n';
   
   db=NULL;
@@ -648,18 +649,23 @@ void mainWindow::build_model_recording_treeview()
   m_refRecTreeModel = Gtk::ListStore::create(m_RecordingColumns);
   recording_treeview->set_model(m_refRecTreeModel);
 
-  // fill up the model
+
+   // fill up the model
   Gtk::TreeModel::Row row;
-  char* config_file_name=(char*)"ktan.recording.channels";
-  config_file_name=strcat(home_directory,config_file_name);
+  char conf_file_name[255];
+  strcpy(conf_file_name,home_directory);
+  strcat(conf_file_name,"ktan.recording.channels");
+    
   int rec_channels[256];
   int num_rec_channels=0;
   int in_list = 0;
 
-  ifstream file(config_file_name);
+  
+  cout << "check if " << conf_file_name << " is present in " << home_directory << "\n";
+  ifstream file(conf_file_name);
   if(file.is_open()==TRUE)
     {
-      cerr << "reading recording channels from " << config_file_name << '\n';
+      cout << "reading recording channels from " << conf_file_name << '\n';
       while (file >> rec_channels[num_rec_channels]&&num_rec_channels<256)
 	{
 	  num_rec_channels++;
@@ -698,6 +704,7 @@ void mainWindow::build_model_recording_treeview()
 	    row[m_RecordingColumns.m_col_selected] = false;
 	}
     }
+  file.close();
   update_recording_channels();  
 #ifdef DEBUG_WIN
   cerr << "leave mainWindow::build_model_recording_treeview()\n";
