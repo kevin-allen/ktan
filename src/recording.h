@@ -35,6 +35,7 @@ class recording
   int get_recording_duration_sec();
   void set_file_index(int i);
   void set_file_base(string fb);
+  void set_file_base();
   void set_directory_name(string dir);
   void set_max_recording_time(double time_min);
   static void *recording_thread_helper(void *context) // helper function to start the new thread

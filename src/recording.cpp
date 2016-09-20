@@ -9,6 +9,7 @@
 #include <string.h>
 #include <gtkmm.h>
 #include <sys/statvfs.h>
+#include <fstream>
 
 recording::recording(dataBuffer* datab)
 {
@@ -26,7 +27,7 @@ recording::recording(dataBuffer* datab)
   char *username=getenv("USER");
   p=getpwnam(username);
   directory_name=strcat(p->pw_dir,"/");
-  file_base="xX800";
+  set_file_base();
   set_date_string();
   file_index=1;
   
@@ -68,6 +69,27 @@ recording::~recording()
 #endif
 }
 
+void recording::set_file_base()
+{
+  struct passwd *p;
+  char *username=getenv("USER");
+  char *home_directory;
+  p=getpwnam(username);
+  home_directory=strcat(p->pw_dir,"/");
+  
+  char* base_file_name=(char*)"ktan.file.base";
+  base_file_name=strcat(home_directory,base_file_name);
+  
+  ifstream file(base_file_name);
+  if(file.is_open()==TRUE)
+    {
+      file >> file_base;
+    }
+  else
+    {
+      file_base="dino1";
+    }
+}
 void recording::set_date_string()
 {
   std::stringstream syear;
@@ -115,7 +137,6 @@ bool recording::set_recording_channels(int numChannels, unsigned int* channelLis
       cerr << "recording::set_recording_channels(), is_recording == true, can't change channel selection during recording\n";
       return false;
     }
-
   number_channels_save=numChannels;
   for(int i = 0; i < number_channels_save;i++)
     channel_list[i]=channelList[i];
@@ -134,7 +155,6 @@ bool recording::start_recording()
       cerr << "recording::start_recording(), is_recording already true\n";
       return false;
     }
-
   number_samples_saved=0;
   new_samples_in_buffer=0;
   number_samples_saved_current_file=0;
