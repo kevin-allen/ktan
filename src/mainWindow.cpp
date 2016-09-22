@@ -661,11 +661,11 @@ void mainWindow::build_model_recording_treeview()
   int in_list = 0;
 
   
-  cout << "check if " << conf_file_name << " is present in " << home_directory << "\n";
+  //cout << "check if " << conf_file_name << " is present in " << home_directory << "\n";
   ifstream file(conf_file_name);
   if(file.is_open()==TRUE)
     {
-      cout << "reading recording channels from " << conf_file_name << '\n';
+      //cout << "reading recording channels from " << conf_file_name << '\n';
       while (file >> rec_channels[num_rec_channels]&&num_rec_channels<256)
 	{
 	  num_rec_channels++;
