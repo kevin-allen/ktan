@@ -221,7 +221,7 @@ bool recording::start_recording()
   clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
   clock_gettime(CLOCK_REALTIME, &now_timespec);
   duration_recording_timespec=tk.diff(&start_recording_time_timespec,&now_timespec);
-
+  cout << "data saved to " << file_name << '\n';
 
 #ifdef DEBUG_REC
   cerr << "leaving recording::start_recording()\n";
@@ -314,6 +314,7 @@ bool recording::next_recording_file()
   clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
   number_samples_saved_current_file=0;
   pthread_mutex_unlock(&rec_mutex);
+  cout << "data saved to" << file_name << '\n';
 #ifdef DEBUG_REC
   cerr << "leaving recording::next_recording_file()\n";
 #endif
