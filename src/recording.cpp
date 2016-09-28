@@ -49,7 +49,6 @@ recording::recording(dataBuffer* datab)
     channel_list[i]=i;
 
   pthread_mutex_init(&rec_mutex,NULL);
-  pthread_mutex_unlock(&rec_mutex);
   is_recording=false;
 
 #ifdef DEBUG_REC

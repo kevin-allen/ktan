@@ -11,7 +11,7 @@
 #include <stdlib.h> 
 #include <stdint.h>
 #include <glibmm.h>
-
+#include <fstream>
 
 oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
 {
@@ -623,6 +623,90 @@ void oscilloscope::set_channel_group_default()
 #ifdef DEBUG_OSC
   cerr << "entering oscilloscope::set_channel_group_default()\n";
 #endif
+
+  int size=255;
+  char home_directory[size];
+  char conf_file_name[size];
+  struct passwd *p;
+  char *username=getenv("USER");
+  p=getpwnam(username);
+  strcpy(home_directory,p->pw_dir);
+  strcat(home_directory,"/");
+  strcpy(conf_file_name,home_directory);
+  strcat(conf_file_name,"ktan.oscilloscope.group.channels");
+
+  int channel_list[size];
+  int group_list[size];
+  int n = 0;
+  int nn;
+  
+  //cout << "check if " << conf_file_name << " is present in " << home_directory << "\n";
+  ifstream file(conf_file_name);
+  if(file.is_open()==TRUE)
+    {
+      //cout << "reading oscilloscope groups and channels from " << conf_file_name << '\n';
+      while (file >> group_list[n] && file >> channel_list[n] &&n<size)
+	{
+	  n++;
+	}
+
+      // check if valid entry
+      for (int i = 0; i < n; i++)
+	{
+	  if(group_list[i]>=num_groups| group_list[i]<0)
+	    {
+	      cerr << "invalid group number:" << group_list[i] << " in " << conf_file_name << '\n';
+	      cerr << "should be from 0 to " << num_groups-1 << '\n';
+	      cerr << "default values will be used\n";
+	      set_channel_group_default_no_file();
+	      return;
+	    }
+	  if(channel_list[i]>=num_channels|| channel_list[i]<0) 
+	    {
+	      cerr << "invalid channel number:" << channel_list[i] << " in " << conf_file_name << '\n';
+	      cerr << "should be from 0 to " << num_channels-1 << '\n';
+	      cerr << "default values will be used\n";
+	      set_channel_group_default_no_file();
+	      return;
+	    }
+	}
+      for (int i = 0; i < n; i++)
+	cout << group_list[i]  << " " << channel_list[i] << '\n';
+      for(int i = 0; i < num_groups; i++)
+	{
+	  nn=0;
+	  // how many channels in this group
+	  for(int j = 0; j < n; j++)
+	    {
+	      if(group_list[j]==i)
+		nn++;
+	    }
+	  grp[i].set_num_channels(nn);
+	  nn=0;
+	  for(int j = 0; j < n; j++)
+	    {
+	      if(group_list[j]==i){
+		grp[i].set_channel_id(nn,channel_list[j]);
+		nn++;
+	      }
+	    }
+	}
+    }
+  else
+    {  
+      set_channel_group_default_no_file();
+    }
+#ifdef DEBUG_OSC
+  cerr << "leaving oscilloscope::set_channel_group_default()\n";
+#endif
+}
+
+
+void oscilloscope::set_channel_group_default_no_file()
+{
+#ifdef DEBUG_OSC
+  cerr << "entering oscilloscope::set_channel_group_default_no_file()\n";
+#endif
   int chan;
   // set default values in channel groups
   for(int i = 0; i < num_groups; i++)
@@ -636,12 +720,11 @@ void oscilloscope::set_channel_group_default()
 	  grp[i].set_channel_id(j,chan);
 	}
     }
-  
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::set_channel_group_default()\n";
+  cerr << "leaving oscilloscope::set_channel_group_default_no_file()\n";
 #endif
-}
 
+}
 
 
 void oscilloscope::set_default_colours()

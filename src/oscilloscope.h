@@ -118,6 +118,7 @@ class oscilloscope
 
   bool on_timeout();
   void set_channel_group_default();
+  void set_channel_group_default_no_file();
   void set_default_colours();
   int get_data();
   int show_new_data();
