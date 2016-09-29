@@ -28,7 +28,6 @@ recording::recording(dataBuffer* datab)
   p=getpwnam(username);
   directory_name=strcat(p->pw_dir,"/");
   set_file_base();
-  set_date_string();
   file_index=1;
   
   proportion_buffer_filled_before_save=FILLING_PROPORTION_BEFORE_SAVE;
@@ -115,7 +114,7 @@ void recording::generate_file_name()
 {
   std::stringstream ss;
   
-
+  set_date_string();
   if(file_index<10)
     ss << directory_name << file_base << "-" << date_string << "_0" << file_index << ".dat";
   else
@@ -317,7 +316,6 @@ bool recording::next_recording_file()
 #ifdef DEBUG_REC
   cerr << "leaving recording::next_recording_file()\n";
 #endif
-  
 }
 
 
