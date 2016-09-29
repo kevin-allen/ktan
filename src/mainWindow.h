@@ -112,6 +112,7 @@ class mainWindow: public Gtk::Window
   Glib::RefPtr<Gtk::ListStore> m_refOscAllTreeModel;
   
 
+  void set_max_recording_time();
   // callback functions
   void on_play_toolbutton_toggled();
   void on_record_toolbutton_toggled();

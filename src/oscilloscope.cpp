@@ -670,8 +670,6 @@ void oscilloscope::set_channel_group_default()
 	      return;
 	    }
 	}
-      for (int i = 0; i < n; i++)
-	cout << group_list[i]  << " " << channel_list[i] << '\n';
       for(int i = 0; i < num_groups; i++)
 	{
 	  nn=0;

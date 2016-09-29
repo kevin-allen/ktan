@@ -159,7 +159,7 @@ mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>
   osc_group_preference_spinbutton->set_value(0);
 
   // set max recording time
-  max_recording_time_spinbutton->set_value(MAX_RECORDING_TIME_MIN);
+  set_max_recording_time();
 
   
   build_model_recording_treeview();
@@ -195,8 +195,44 @@ mainWindow::~mainWindow()
 #ifdef DEBUG_WIN
   cerr << "leaving mainWindow::~mainWindow()\n";
 #endif
-
 }
+
+void mainWindow::set_max_recording_time()
+{
+#ifdef DEBUG_WIN
+  cerr << "entering mainWindow::set_max_recording_time()\n";
+#endif
+  
+  char conf_file_name[255];
+  strcpy(conf_file_name,home_directory);
+  strcat(conf_file_name,"ktan.max.recording.time");
+  int mrt;
+  //cout << "check if " << conf_file_name << " is present in " << home_directory << "\n";
+  ifstream file(conf_file_name);
+  if(file.is_open()==TRUE)
+    {
+      if(file >> mrt)
+	{
+	  if(mrt<0&&mrt>60)
+	    {
+	      cerr << "max.recording.time should be between 0 and 60 min but was " << mrt << '\n';
+	      max_recording_time_spinbutton->set_value(MAX_RECORDING_TIME_MIN);
+	      return;
+	    }
+	  max_recording_time_spinbutton->set_value(mrt);
+	}
+    }
+  else
+    {
+      cerr << "setting max time to " << MAX_RECORDING_TIME_MIN << "minutes\n";
+      max_recording_time_spinbutton->set_value(MAX_RECORDING_TIME_MIN);
+    }
+  
+#ifdef DEBUG_WIN
+  cerr << "leaving mainWindow::set_max_recording_time()\n";
+#endif
+}
+
 
 bool mainWindow::get_board_is_there()
 {
