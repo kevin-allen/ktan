@@ -1,4 +1,4 @@
-bin_PROGRAMS =  ktan ktanStartStop 
+bin_PROGRAMS =  ktan ktanStartStop
 
 ktanStartStop_SOURCE = ktanStartStop.c
 
@@ -13,3 +13,8 @@ ktan_sed.glade_SOURCE = ktan.glade
 ktan_sed.glade: ktan.glade
 	cat ktan.glade | $(SED) 's;/usr/local/share/;$(datadir)/;g' > ktan_sed.glade
 EXTRA_DIST = ktan.glade 
+
+
+# Install my_script in $(bindir) and distribute it.
+dist_bin_SCRIPTS = ktanCopyUserConfig.sh
+

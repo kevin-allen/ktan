@@ -10,13 +10,15 @@
 #
 # The shell script is doing: cp ktan.file.base.julia ktan.file.base
 # The original ktan.file.base is overwritten.
-
-while getopts tr name
+fflag=
+file_base=
+while getopts f: name
 do
     case $name in
-#	t)
-#	    tflag=1;;
-	*)  echo Usage: $0 [-t][-d] session_list file_ext>&2
+	f)
+	    fflag=1
+	    file_base="$OPTARG";;
+	*)  echo Usage: $0 [-f filebase] user >&2
             exit 2;;
     esac
 done
@@ -33,7 +35,7 @@ fi
 
 user=$1
 
-for file in `echo "ktan.file.base ktan.max.recording.time ktan.oscilloscope.group.channels 
+for file in `echo "ktan.max.recording.time ktan.oscilloscope.group.channels 
 ktan.recording.channels"`
 do
 	if [ -e "$file.$user" ] 
@@ -44,4 +46,21 @@ do
 		echo "$file.$user is missing"
 	fi		
 done
+ 
+if [ "$fflag" = "1" ]
+then
+	echo "creating ktan.file.base containing $file_base"
+	echo $file_base > ktan.file.base
+	echo "creating positrack.file.base containing $file_base"
+	echo $file_base > positrack.file.base
+else
+	file="ktan.file.base"
+	if [ -e "$file.$user" ] 
+	then	
+		echo "copy $file.$user to $file"
+		cp $file.$user $file
+	else
+		echo "$file.$user is missing"
+	fi		    
+fi
 
