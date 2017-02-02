@@ -18,7 +18,7 @@ do
 	f)
 	    fflag=1
 	    file_base="$OPTARG";;
-	*)  echo Usage: $0 [-f filebase] user >&2
+	*)  echo "Usage: $0 [-f fileBase] user" >&2
             exit 2;;
     esac
 done
@@ -30,6 +30,7 @@ then
     echo "$0 needs one argument which is the name of the user." >&2
     echo "$0 copies the user specific configuration file that will be used by ktan." >&2
     echo "For example, if user is julia, the program copies ktan.file.base.julia to ktan.file.base" >&2
+    echo "Usage: $0 [-f fileBase] userName"
     exit 1
 fi
 
