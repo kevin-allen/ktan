@@ -17,7 +17,7 @@
 #include <fstream>
 
 #define RECORDING_CHANNELS_ON 37
-#define MAX_RECORDING_TIME_MIN 20
+#define MAX_RECORDING_TIME_MIN 30
 
 mainWindow::mainWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade) :
   Gtk::Window(cobject), builder(refGlade) // call Gtk::Window and builder
