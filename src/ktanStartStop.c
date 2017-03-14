@@ -63,7 +63,7 @@ int main (int argc, char *argv[])
   // to get the options
   int opt; 
   int i;
-  char * terminal_configuration_file; // configuration file to run positrack in terminal mode
+  char * terminal_configuration_file; // configuration file to run ktan in terminal mode
   // flag for each option
   int with_h_opt=0; // help
   int with_v_opt=0; // version
