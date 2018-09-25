@@ -257,6 +257,10 @@ bool recording::get_is_recording()
 
 void recording::set_file_base(string fb)
 {
+  
+  // remove empty space from file_base
+  std::string::iterator end_pos = std::remove(fb.begin(), fb.end(), ' ');
+  fb.erase(end_pos, fb.end());
   file_base=fb;
   generate_file_name();
 }
