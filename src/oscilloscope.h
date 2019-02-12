@@ -74,6 +74,8 @@ class oscilloscope
   Gtk::DrawingArea* drawing_area;
 
   // 3 buffers to have simpler functions
+  short int* buffer_si; // to get the data from dataBuffer as short int
+  short int* buffer_si_ptr;
   double* buffer;
   double* buffer_ptr;
   double* page_ptr;

@@ -24,6 +24,8 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   // Allocate memory for an internal buffer that can be used by other objects 
   buffer_size= OSC_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS; // to rewind
   buffer = new double [buffer_size];
+  buffer_si = new short int[buffer_size];
+  
   show_buffer_size =  OSC_SHOW_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS;
   show_buffer = new double [show_buffer_size];
 
@@ -116,6 +118,7 @@ oscilloscope::~oscilloscope()
   stop_oscilloscope();
   
   delete[] buffer;
+  delete[] buffer_si;
   delete[] show_buffer;
   delete[] grp;
   delete[] all_channels_list;
@@ -539,21 +542,21 @@ int oscilloscope::get_data()
 #endif
 
 
-  // 3. read the new data, maximum up to complete the current page, all channels, in microvolts
+  // 3. read the new data, maximum up to complete the current page, all channels, get the data in short integer 
   buffer_ptr=buffer+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
-  int samples_returned=db->getNewDataReverse(first_sample,buffer_ptr,samples_to_complete_page,num_channels,all_channels_list,factor_microvolt);
+  buffer_si_ptr=buffer_si+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
+  int samples_returned=db->getNewData(first_sample,buffer_si_ptr,samples_to_complete_page,num_channels,all_channels_list);
   if(samples_returned<0)
     {
       cerr << "oscilloscope::get_data(), problem getting new data\n";
       return -1;
     }
+  // 4. transform the data data from short int to double, reverse polarity and scale to microvolt
+  for(int i = 0; i < samples_returned; i++)
+    for(int j = 0; j < num_channels; j++)
+      buffer_ptr[i*num_channels+j]=0-buffer_si_ptr[i*num_channels+j]*factor_microvolt;
 
-
-  
-
-  
   new_samples_buffer=new_samples_buffer+samples_returned;
-
 
 #ifdef DEBUG_OSC
   cerr << "samples_returned: " << samples_returned << '\n';

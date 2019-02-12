@@ -28,9 +28,9 @@ class dataBuffer
   ~dataBuffer();
   void setNumChannels(int numChannels);
   int getNumChannels();
-  void addNewData(int numSamples,short int* data);
-  int getNewData(unsigned long int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList);
-  int getNewDataReverse(unsigned long int firstSample,double* data, int maxSamples, int numChannels, unsigned int* channelList, double factor_microvolt);
+  void addNewData(int numSamples,short int* data); // transfer from acquition buffer to dataBuffer
+  int getNewData(unsigned long int firstSample,short int* data, int maxSamples, int numChannels, unsigned int* channelList); // transfer from dataBuffer to rec or osc
+  //  int getNewDataReverse(unsigned long int firstSample,double* data, int maxSamples, int numChannels, unsigned int* channelList, double factor_microvolt); depreciated
   void resetData();
   void set_sampling_rate(int sr);
   int get_sampling_rate();

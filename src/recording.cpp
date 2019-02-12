@@ -334,10 +334,11 @@ void *recording::recording_thread_function(void)
     {
 
       pthread_mutex_lock(&rec_mutex);
-      // get new data from db
-      rec_buffer_ptr=buffer+new_samples_in_buffer*number_channels_save;
-      max_samples_to_get=max_samples_in_buffer-new_samples_in_buffer;
-    
+      
+      rec_buffer_ptr=buffer+new_samples_in_buffer*number_channels_save; // pointer to where the new data should go in rec_buffer
+      max_samples_to_get=max_samples_in_buffer-new_samples_in_buffer; // maximum number of sample to fill up the rec_buffer
+
+      // get new data from the dataBuffer object
       ret_get_samples=db->getNewData(number_samples_saved+new_samples_in_buffer,rec_buffer_ptr,max_samples_to_get,number_channels_save,channel_list);
       if(ret_get_samples==-1)
 	{
@@ -346,7 +347,8 @@ void *recording::recording_thread_function(void)
 	  return 0;
 	}
       new_samples_in_buffer=new_samples_in_buffer+ret_get_samples; // add the new samples loaded
-      
+
+      // check if we have enough data to justify saving them to 
       if(new_samples_in_buffer>max_samples_in_buffer*proportion_buffer_filled_before_save)
 	{
 	  if(save_buffer_to_file()!=0)	  // save buffer to file
