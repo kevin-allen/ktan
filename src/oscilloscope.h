@@ -29,6 +29,7 @@
 #include "dataBuffer.h"
 #include "channelGroup.h"
 #include <gtkmm.h>
+#include <pthread.h> 
 using namespace std;
 
 /***************************************************************
@@ -136,6 +137,7 @@ class oscilloscope
   double global_gain_factor;
   double gui_seconds_per_page;
   double gui_global_gain;
+  pthread_mutex_t osc_mutex;
 
  protected:
   sigc::slot<bool> tslot;

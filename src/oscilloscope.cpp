@@ -1,4 +1,4 @@
-//#define DEBUG_OSC
+#define DEBUG_OSC
 #include "oscilloscope.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -12,11 +12,12 @@
 #include <stdint.h>
 #include <glibmm.h>
 #include <fstream>
+#include <assert.h>
 
 oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::oscilloscope()\n";
+  cerr << "***entering oscilloscope::oscilloscope()***\n";
 #endif
 
   db=datab;
@@ -41,7 +42,7 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   num_channels=db->getNumChannels();
 
   #ifdef DEBUG_OSC
-  cerr << "oscilloscope number of channels: " << num_channels << '\n';
+  cerr << "oscilloscope::oscilloscope(), number of channels: " << num_channels << '\n';
 #endif
 
 
@@ -94,16 +95,19 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   tslot = sigc::mem_fun(*this, &oscilloscope::on_timeout);
   
   factor_microvolt=OSC_FACTOR_MICROVOLT;
+
+  pthread_mutex_init(&osc_mutex,NULL);
   
 #ifdef DEBUG_OSC
-  cerr << "osc sampling_rate: " << sampling_rate << '\n';
-  cerr << "osc num_channels: " << num_channels << '\n';
-  cerr << "osc seconds_per_page: " << seconds_per_page << '\n';
-  cerr << "osc samples_per_page: " << samples_per_page << '\n';
-  cerr << "osc page size: " << page_size << '\n';
-  cerr << "osc buffer size: " << buffer_size << '\n';
-  cerr << "osc num_pages_buffer: " << num_pages_buffer << '\n';
-  cerr << "leaving oscilloscope::oscilloscope()\n";
+  cerr << "oscilloscope::oscilloscope(), " 
+       << "sampling_rate: " << sampling_rate 
+       << " num_channels: " << num_channels 
+       << " seconds_per_page: " << seconds_per_page 
+       << " samples_per_page: " << samples_per_page
+       << " page size: " << page_size
+       << " buffer size: " << buffer_size 
+       << " num_pages_buffer: " << num_pages_buffer << '\n';
+  cerr << "leaving oscilloscope::oscilloscope()\n\n";
 
 #endif
 }
@@ -111,12 +115,12 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
 oscilloscope::~oscilloscope()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::~oscilloscope()\n";
+  cerr << "***entering oscilloscope::~oscilloscope()***\n";
 #endif
   
 
   stop_oscilloscope();
-  
+  pthread_mutex_destroy(&osc_mutex);
   delete[] buffer;
   delete[] buffer_si;
   delete[] show_buffer;
@@ -129,14 +133,14 @@ oscilloscope::~oscilloscope()
   delete[] red;
   delete[] green;
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::~oscilloscope()\n";
+  cerr << "leaving oscilloscope::~oscilloscope()\n\n";
 #endif
 }
 
 bool oscilloscope::on_timeout()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::on_timeout()\n";
+  cerr << "***entering oscilloscope::on_timeout()***\n";
 #endif
   if(is_displaying==false)
     { 
@@ -147,19 +151,20 @@ bool oscilloscope::on_timeout()
       return true;
     }
   is_drawing==true;
-  
+
+
+  // mutex lock, I think mutex might be safer than the is_drawing variable flag
+  pthread_mutex_lock(&osc_mutex);
+
   
   // gui can affect time and gain only when this function is called
   // prevent gui changes from affecting drawing until it is completed
   update_time_gain();
 
-
   // get a copy of the display group so that any change during 
   // the displaying process does not cause segmentation faults
   // so for displaying use grp_for_display
   grp[current_group].copy_channelGroup(grp_for_display);
-
-
   
   // transfer data from db to buffer
   if(get_data()<0)
@@ -171,11 +176,14 @@ bool oscilloscope::on_timeout()
   // display the new data if we have a complete page to show
   show_new_data();
 
+  // mutex unlock
+  pthread_mutex_unlock(&osc_mutex);  
+
   
   is_drawing==false;
   
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::on_timeout()\n";
+  cerr << "leaving oscilloscope::on_timeout()\n\n";
 #endif
   return true;
 }
@@ -183,7 +191,7 @@ bool oscilloscope::on_timeout()
 void oscilloscope::update_time_gain()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::update_time_gain()\n";
+  cerr << "***entering oscilloscope::update_time_gain()***\n";
 #endif
   if (seconds_per_page!=gui_seconds_per_page||global_gain!=gui_global_gain)
     {
@@ -198,7 +206,7 @@ void oscilloscope::update_time_gain()
       pages_in_memory=0;
     }
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::update_time_gain()\n";
+  cerr << "leaving oscilloscope::update_time_gain()\n\n";
 #endif
 }
 
@@ -210,7 +218,7 @@ void oscilloscope::increase_gain()
       gui_global_gain=gui_global_gain*global_gain_factor;
     }
 #ifdef DEBUG_OSC
-  cerr << "gui global gain: " << gui_global_gain << '\n';
+  cerr << "oscilloscope::increase_gain(), gui_global_gain: " << gui_global_gain << '\n';
 #endif 
 }
 void oscilloscope::decrease_gain()
@@ -220,14 +228,14 @@ void oscilloscope::decrease_gain()
       gui_global_gain=gui_global_gain/global_gain_factor;
     }
 #ifdef DEBUG_OSC
-  cerr << "gui global gain: " << gui_global_gain << '\n';
+  cerr << "oscilloscope::increase_gain(), gui_global_gain: " << gui_global_gain << '\n';
 #endif
 
 }
 void oscilloscope::increase_time_shown()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::increase_time_shown()\n";
+  cerr << "***entering oscilloscope::increase_time_shown()***\n";
 #endif
 
   if(gui_seconds_per_page/TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR>=MIN_TIME_SEC_IN_OSCILLOSCOPE_PAGE)
@@ -235,37 +243,37 @@ void oscilloscope::increase_time_shown()
       gui_seconds_per_page=gui_seconds_per_page/TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR;
     }
 #ifdef DEBUG_OSC
-  cerr << "new gui_seconds_per_page: " << gui_seconds_per_page << '\n';
-  cerr << "leaving oscilloscope::increase_time_shown()\n";
+  cerr << "oscilloscope::increase_time_shown(), gui_seconds_per_page: " << gui_seconds_per_page << '\n';
+  cerr << "leaving oscilloscope::increase_time_shown()\n\n";
 #endif
 
 }
 void oscilloscope::decrease_time_shown()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::decrease_time_shown()\n";
+  cerr << "***entering oscilloscope::decrease_time_shown()***\n";
 #endif
    if(gui_seconds_per_page*TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR<=MAX_TIME_SEC_IN_OSCILLOSCOPE_PAGE)
     {
       gui_seconds_per_page=gui_seconds_per_page*TIME_SEC_IN_OSCILLOSCOPE_PAGE_CHANGE_FACTOR;
     }
 #ifdef DEBUG_OSC
-   cerr << "new gui_seconds_per_page: " << gui_seconds_per_page << '\n';
-  cerr << "entering oscilloscope::decrease_time_shown()\n";
+   cerr << "oscilloscope::decrease_time_shown(), gui_seconds_per_page: " << gui_seconds_per_page << '\n';
+  cerr << "leaving oscilloscope::decrease_time_shown()\n\n";
 #endif
 }
 
 void oscilloscope::refresh()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::refresh()\n";
+  cerr << "***entering oscilloscope::refresh()***\n";
 #endif
   
   grp[current_group].copy_channelGroup(grp_for_display);
   show_data(displayed_page); 
 
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::refresh()\n";
+  cerr << "leaving oscilloscope::refresh()\n\n";
 #endif
 }
 
@@ -276,7 +284,7 @@ int oscilloscope::fill_show_buffer(int page)
   // other 
 
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::fill_show_buffer()\n";
+  cerr << "***entering oscilloscope::fill_show_buffer()***\n";
 #endif
 
   page_ptr=buffer+(page*samples_per_page*num_channels);
@@ -287,7 +295,7 @@ int oscilloscope::fill_show_buffer(int page)
     
 
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::fill_show_buffer()\n";
+  cerr << "leaving oscilloscope::fill_show_buffer()\n\n";
 #endif
 
 }
@@ -295,7 +303,7 @@ int oscilloscope::fill_show_buffer(int page)
 int oscilloscope::show_data(int page)
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::show_data()\n";
+  cerr << "***entering oscilloscope::show_data()***\n";
 #endif
 // to get an idea of drawing time
   struct timespec beginning_drawing,end_drawing,drawing_duration,data_crunch_end,data_crunch_duration,  rec; 
@@ -461,8 +469,8 @@ int oscilloscope::show_data(int page)
   displayed_page=page;
   
 #ifdef DEBUG_OSC
-  cerr << "Drawing time : " << drawing_duration.tv_sec*1000+drawing_duration.tv_nsec/1000000.0 << "ms\n";
-  cerr << "leaving oscilloscope::show_data()\n";
+  cerr << "oscilloscope::show_data(), drawing time : " << drawing_duration.tv_sec*1000+drawing_duration.tv_nsec/1000000.0 << "ms\n";
+  cerr << "leaving oscilloscope::show_data()\n\n";
 #endif
 
   return 0;
@@ -472,7 +480,7 @@ int oscilloscope::show_data(int page)
 int oscilloscope::show_new_data()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::show_new_data()\n";
+  cerr << "***entering oscilloscope::show_new_data()***\n";
 #endif
   // only show when there is a new full page
   if (new_samples_buffer!=samples_per_page)
@@ -497,13 +505,13 @@ int oscilloscope::show_new_data()
   
 
 #ifdef DEBUG_OSC
-  cerr << "current_page: " << current_page << "\n";
-  cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
+  cerr << "oscilloscope::show_new_data(), current_page: " << current_page << "\n";
+  cerr << "oscilloscope::show_new_data(), num_samples_displayed: " << num_samples_displayed << '\n';
 #endif
 
   
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::show_new_data()\n";
+  cerr << "leaving oscilloscope::show_new_data()\n\n";
 #endif
   return 0;
 
@@ -517,7 +525,7 @@ int oscilloscope::get_data()
      a page at a time and avoid wrap around buffer
    ************************************************/
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::get_data()\n";
+  cerr << "***entering oscilloscope::get_data()***\n";
 #endif
 
   // 1. exit here if no new data available
@@ -532,13 +540,13 @@ int oscilloscope::get_data()
   unsigned long int first_sample = num_samples_displayed+new_samples_buffer;
 
 #ifdef DEBUG_OSC
-  cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
-  cerr << "db->get_number_samples_read(): " << db->get_number_samples_read() << '\n';
-  cerr << "new_samples_buffer: " << new_samples_buffer << '\n';
-  cerr << "new samples available: " << new_samples_available << '\n';
-  cerr << "samples_to_complete_page: " << samples_to_complete_page << '\n';
-  cerr << "first_sample: " << first_sample << '\n';
-  
+  cerr << "oscilloscope::get_data(), " 
+       << " num_samples_displayed: " << num_samples_displayed
+       << " db->get_number_samples_read(): " << db->get_number_samples_read() 
+       << " new_samples_buffer: " << new_samples_buffer 
+       << " new samples available: " << new_samples_available 
+       << " samples_to_complete_page: " << samples_to_complete_page
+       << " first_sample: " << first_sample << '\n';
 #endif
 
 
@@ -554,14 +562,29 @@ int oscilloscope::get_data()
   // 4. transform the data data from short int to double, reverse polarity and scale to microvolt
   for(int i = 0; i < samples_returned; i++)
     for(int j = 0; j < num_channels; j++)
-      buffer_ptr[i*num_channels+j]=0-buffer_si_ptr[i*num_channels+j]*factor_microvolt;
+      {
+	if((current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels)+i*num_channels+j>=buffer_size)
+	  {
+	    cerr << "oscilloscope::get_data() about to segment!\n";
+	    cerr << "oscilloscope::get_data() dbg info, current_page: " << current_page
+		 << " samples_per_page: " << samples_per_page
+		 << " num_channels: " << num_channels
+		 << " new_samples_buffer:" << new_samples_buffer
+		 << " i: " << i
+		 << " j: " << j
+		 << " samples_returned: " << samples_returned
+		 << " buffer_size: " << buffer_size << '\n';
+	  }
+	assert(i*num_channels+j<buffer_size);
+	buffer_ptr[i*num_channels+j]=0-buffer_si_ptr[i*num_channels+j]*factor_microvolt;
+      }
 
   new_samples_buffer=new_samples_buffer+samples_returned;
 
 #ifdef DEBUG_OSC
-  cerr << "samples_returned: " << samples_returned << '\n';
-  cerr << "new_samples_buffer: " << new_samples_buffer << '\n';
-  cerr << "leaving oscilloscope::get_data()\n";
+  cerr << "oscilloscope::get_data(): samples_returned: " << samples_returned << '\n';
+  cerr << "oscilloscope::get_data(): new_samples_buffer: " << new_samples_buffer << '\n';
+  cerr << "leaving oscilloscope::get_data()\n\n";
 #endif
   return 0;
 }
@@ -571,7 +594,7 @@ int oscilloscope::get_data()
 void oscilloscope::reset()
 {
   #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::reset()\n";
+  cerr << "***entering oscilloscope::reset()***\n";
 #endif
 
   samples_per_page=sampling_rate*seconds_per_page;
@@ -586,28 +609,28 @@ void oscilloscope::reset()
   displayed_page=0;
 
 #ifdef DEBUG_OSC
-  cerr << "num_samples_displayed: " << num_samples_displayed << '\n';
-  cerr << "leaving oscilloscope::reset()\n";
+  cerr << "oscilloscope::reset(), num_samples_displayed: " << num_samples_displayed << '\n';
+  cerr << "leaving oscilloscope::reset()\n\n";
 #endif
 }
 
 bool oscilloscope::start_oscilloscope()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::start_oscilloscope()\n";
+  cerr << "***entering oscilloscope::start_oscilloscope()***\n";
 #endif
   reset();
   is_displaying=true;
   timeout_connection = Glib::signal_timeout().connect(tslot,OSC_TIME_BETWEEN_UPDATE_MS); 
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::start_oscilloscope()\n";
+  cerr << "leaving oscilloscope::start_oscilloscope()\n\n";
 #endif
   return true;
 }
 bool oscilloscope::stop_oscilloscope()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::stop_oscilloscope()\n";
+  cerr << "***entering oscilloscope::stop_oscilloscope()***\n";
 #endif
   
   timeout_connection.disconnect();
@@ -615,7 +638,7 @@ bool oscilloscope::stop_oscilloscope()
   usleep(50000); // allow thread to die
 
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::stop_oscilloscope()\n";
+  cerr << "leaving oscilloscope::stop_oscilloscope()\n\n";
 #endif
   return true;
 }
@@ -624,7 +647,7 @@ bool oscilloscope::stop_oscilloscope()
 void oscilloscope::set_channel_group_default()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::set_channel_group_default()\n";
+  cerr << "***entering oscilloscope::set_channel_group_default()***\n";
 #endif
 
   int size=255;
@@ -658,7 +681,7 @@ void oscilloscope::set_channel_group_default()
 	{
 	  if(group_list[i]>=num_groups| group_list[i]<0)
 	    {
-	      cerr << "invalid group number:" << group_list[i] << " in " << conf_file_name << '\n';
+	      cerr << "oscilloscope::set_channel_group_default(), invalid group number:" << group_list[i] << " in " << conf_file_name << '\n';
 	      cerr << "should be from 0 to " << num_groups-1 << '\n';
 	      cerr << "default values will be used\n";
 	      set_channel_group_default_no_file();
@@ -666,7 +689,7 @@ void oscilloscope::set_channel_group_default()
 	    }
 	  if(channel_list[i]>=num_channels|| channel_list[i]<0) 
 	    {
-	      cerr << "invalid channel number:" << channel_list[i] << " in " << conf_file_name << '\n';
+	      cerr << "oscilloscope::set_channel_group_default(), invalid channel number:" << channel_list[i] << " in " << conf_file_name << '\n';
 	      cerr << "should be from 0 to " << num_channels-1 << '\n';
 	      cerr << "default values will be used\n";
 	      set_channel_group_default_no_file();
@@ -698,7 +721,7 @@ void oscilloscope::set_channel_group_default()
       set_channel_group_default_no_file();
     }
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::set_channel_group_default()\n";
+  cerr << "leaving oscilloscope::set_channel_group_default()\n\n";
 #endif
 }
 
@@ -706,7 +729,7 @@ void oscilloscope::set_channel_group_default()
 void oscilloscope::set_channel_group_default_no_file()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::set_channel_group_default_no_file()\n";
+  cerr << "***entering oscilloscope::set_channel_group_default_no_file()***\n";
 #endif
   int chan;
   // set default values in channel groups
@@ -722,7 +745,7 @@ void oscilloscope::set_channel_group_default_no_file()
 	}
     }
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::set_channel_group_default_no_file()\n";
+  cerr << "leaving oscilloscope::set_channel_group_default_no_file()\n\n";
 #endif
 
 }
@@ -731,7 +754,7 @@ void oscilloscope::set_channel_group_default_no_file()
 void oscilloscope::set_default_colours()
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::set_default_colours()\n";
+  cerr << "***entering oscilloscope::set_default_colours()***\n";
 #endif
   // set default values in channel groups
   int grouping=4;
@@ -786,7 +809,7 @@ void oscilloscope::set_default_colours()
 	}
     }
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::set_channel_group_default()\n";
+  cerr << "leaving oscilloscope::set_channel_group_default()\n\n";
 #endif
 }
 
@@ -805,7 +828,7 @@ bool oscilloscope::get_is_displaying()
  void oscilloscope::set_current_group(int g)
 {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::set_current_group()\n";
+  cerr << "***entering oscilloscope::set_current_group()***\n";
 #endif
   if(g<0)
     {
@@ -821,7 +844,7 @@ bool oscilloscope::get_is_displaying()
   
   refresh();
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::set_current_group(), group set to " << current_group << "\n";
+  cerr << "leaving oscilloscope::set_current_group()\n\n";
 #endif
 }
 
@@ -931,7 +954,7 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
  void oscilloscope::show_previous_page()
  {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::show_previous_page()\n";
+  cerr << "***entering oscilloscope::show_previous_page()***\n";
 #endif
   int page;
   // by default, show the page currently on displayed
@@ -956,20 +979,17 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
       page=displayed_page-1;
     }
 
-#ifdef DEBUG_OSC
-  fprintf(stderr,"show page %d\n", page);
-#endif
   show_data(page);
   
 
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::show_previous_page()\n";
+  cerr << "leaving oscilloscope::show_previous_page()\n\n";
 #endif
 }
  void oscilloscope::show_next_page()
  {
 #ifdef DEBUG_OSC
-  cerr << "entering oscilloscope::show_next_page()\n";
+  cerr << "***entering oscilloscope::show_next_page()***\n";
 #endif
   // by default, show the page currently on displayed
   int page=displayed_page;
@@ -985,13 +1005,9 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
 	page=0;
     }
 
-#ifdef DEBUG_OSC
-  fprintf(stderr,"show page %d\n", page);
-#endif
-
   show_data(page);
   
 #ifdef DEBUG_OSC
-  cerr << "leaving oscilloscope::show_next_page()\n";
+  cerr << "leaving oscilloscope::show_next_page()\n\n";
 #endif
 }

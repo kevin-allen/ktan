@@ -47,9 +47,6 @@ class dataBuffer
   int number_channels;
   short int* buffer;// buffer to get data from comedi devices
   int addAtEnd;
-  int samplesToCopy;
-  int index_copy_start;
-  int copyAtEnd;
   int sampling_rate; // in Hz;
 };
 

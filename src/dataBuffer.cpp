@@ -1,4 +1,4 @@
-//#define DEBUG_BUF
+#define DEBUG_BUF
 #include "dataBuffer.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -191,9 +191,11 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
   
 #ifdef DEBUG_BUF
   cerr << "***entering dataBuffer::getNewData()***\n";
-
+  int samplesToCopy = 0; // needs to be thread unique
+  
   // prevent changing the buffer while working with it
   pthread_mutex_lock(&data_buffer_mutex);
+  
 #ifdef DEBUG_BUF
   cerr << "dataBuffer::getNewData(), data_buffer_mutex locked\n";
 #endif
@@ -249,7 +251,7 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
   // number of samples to copy
   samplesToCopy=number_samples_read-firstSample;
   // get index of start of coppy
-  index_copy_start=(index_next_sample)-samplesToCopy; // 
+  int index_copy_start=(index_next_sample)-samplesToCopy; // 
   if(index_copy_start<0)
     index_copy_start=max_number_samples_in_buffer+index_copy_start;
 
@@ -290,7 +292,7 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
     }
   else
     {// copy the data in two gos (end of buffer, then start of buffer)
-      copyAtEnd=max_number_samples_in_buffer-index_copy_start;
+     int  copyAtEnd=max_number_samples_in_buffer-index_copy_start;
 #ifdef DEBUG_BUF
       cerr << "dataBuffer::getNewData(), copy from dataBuffer with wrap around, copyAtEnd " << copyAtEnd << '\n';
 #endif

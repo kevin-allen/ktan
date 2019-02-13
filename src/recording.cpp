@@ -62,6 +62,8 @@ recording::~recording()
 #endif
 
   delete[] buffer;
+  pthread_mutex_destroy(&rec_mutex);
+
 #ifdef DEBUG_REC
   cerr << "leaving recording::~recording()\n";
 #endif
