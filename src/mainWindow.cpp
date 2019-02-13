@@ -284,7 +284,7 @@ void mainWindow::start_recording(){
 #endif
   
   rec->set_max_recording_time(max_recording_time_spinbutton->get_value());
-  rec->set_file_base(file_base_entry->get_text());
+  rec->set_file_base(  file_base_entry->get_text()   );
   rec->set_file_index(trial_spinbutton->get_value());
   
   if(check_file_overwrite()==false)
