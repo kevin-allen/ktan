@@ -29,6 +29,7 @@
 #include "dataBuffer.h"
 #include "channelGroup.h"
 #include <gtkmm.h>
+#include <pthread.h> 
 using namespace std;
 
 /***************************************************************
@@ -74,6 +75,8 @@ class oscilloscope
   Gtk::DrawingArea* drawing_area;
 
   // 3 buffers to have simpler functions
+  short int* buffer_si; // to get the data from dataBuffer as short int
+  short int* buffer_si_ptr;
   double* buffer;
   double* buffer_ptr;
   double* page_ptr;
@@ -134,6 +137,7 @@ class oscilloscope
   double global_gain_factor;
   double gui_seconds_per_page;
   double gui_global_gain;
+  pthread_mutex_t osc_mutex;
 
  protected:
   sigc::slot<bool> tslot;

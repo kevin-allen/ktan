@@ -62,6 +62,8 @@ recording::~recording()
 #endif
 
   delete[] buffer;
+  pthread_mutex_destroy(&rec_mutex);
+
 #ifdef DEBUG_REC
   cerr << "leaving recording::~recording()\n";
 #endif
@@ -302,7 +304,6 @@ bool recording::next_recording_file()
   cerr << "entering recording::next_recording_file()\n";
 #endif
 
-  pthread_mutex_lock(&rec_mutex);
   close_file();
   file_index++;
   generate_file_name();
@@ -315,9 +316,9 @@ bool recording::next_recording_file()
     }
   clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
   number_samples_saved_current_file=0;
-  pthread_mutex_unlock(&rec_mutex);
   cout << "data saved to" << file_name << '\n';
 #ifdef DEBUG_REC
+  cerr << "recording::next_recording_file(), start_recording_time_timespec: " << start_recording_time_timespec.tv_sec << '\n';
   cerr << "leaving recording::next_recording_file()\n";
 #endif
 }
@@ -332,12 +333,15 @@ void *recording::recording_thread_function(void)
   // all the work here is done within mutex lock
   while(is_recording==true)
     {
-
       pthread_mutex_lock(&rec_mutex);
-      // get new data from db
-      rec_buffer_ptr=buffer+new_samples_in_buffer*number_channels_save;
-      max_samples_to_get=max_samples_in_buffer-new_samples_in_buffer;
-    
+#ifdef DEBUG_REC
+      cerr << "recording::recording_thread_function lock mutex()\n";
+#endif
+
+      rec_buffer_ptr=buffer+new_samples_in_buffer*number_channels_save; // pointer to where the new data should go in rec_buffer
+      max_samples_to_get=max_samples_in_buffer-new_samples_in_buffer; // maximum number of sample to fill up the rec_buffer
+
+      // get new data from the dataBuffer object
       ret_get_samples=db->getNewData(number_samples_saved+new_samples_in_buffer,rec_buffer_ptr,max_samples_to_get,number_channels_save,channel_list);
       if(ret_get_samples==-1)
 	{
@@ -346,7 +350,8 @@ void *recording::recording_thread_function(void)
 	  return 0;
 	}
       new_samples_in_buffer=new_samples_in_buffer+ret_get_samples; // add the new samples loaded
-      
+
+      // check if we have enough data to justify saving them to 
       if(new_samples_in_buffer>max_samples_in_buffer*proportion_buffer_filled_before_save)
 	{
 	  if(save_buffer_to_file()!=0)	  // save buffer to file
@@ -357,20 +362,27 @@ void *recording::recording_thread_function(void)
 	  // buffer is now empty, check if we need to change to a new file
 	  clock_gettime(CLOCK_REALTIME, &now_timespec);
 	  duration_recording_timespec=tk.diff(&start_recording_time_timespec,&now_timespec);
+#ifdef DEBUG_REC
+	  cerr << "recording::recording_thread_function, duration_recording_timespec:" << duration_recording_timespec.tv_sec << "\n";
+#endif
+	  // should be done from the mainWindow to coordinate acq, buffer, rec and osc.
+	  // but the different threads might cause racing condition
+	  if((duration_recording_timespec.tv_sec/60)>=max_recording_time_min)
+	    {
+	      next_recording_file();
+	    }
+	  
 	}
+    
       pthread_mutex_unlock(&rec_mutex);
-
-      // should be done from the mainWindow to coordinate acq, buffer, rec and osc.
-      // but the different threads might cause racing condition
-      if((duration_recording_timespec.tv_sec/60)>=max_recording_time_min)
-	{
-	  next_recording_file();
-	}
+#ifdef DEBUG_REC
+      cerr << "recording::recording_thread_function unlock mutex()\n";
+#endif
       
       // take a break here instead of looping 100% of PCU
       nanosleep(&inter_recording_sleep_timespec,&req);
     }
-
+  
 #ifdef DEBUG_REC
   cerr << "leaving recording::recording_thread_function()\n";
 #endif
@@ -400,17 +412,16 @@ int recording::save_buffer_to_file()
   number_samples_saved+=new_samples_in_buffer; // update count
   number_samples_saved_current_file+=new_samples_in_buffer;
   new_samples_in_buffer=0;
-  return 0;
+
 #ifdef DEBUG_REC
   cerr << "save_buffer_to_file(), num_elements: " << num_elements << "\n";
 #endif
-
 
 #ifdef DEBUG_REC
   cerr << "leaving recording::save_buffer_to_file()\n";
 #endif
   
-  return true;
+  return 0;
 }
 bool recording::open_file()
 {

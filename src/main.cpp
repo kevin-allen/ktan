@@ -30,13 +30,6 @@ void print_help();
 void openInterfaceBoard();
 
 
-/* mutex to prevent thread to read from a buffer that is being modified
- all parts of code reading or writing to acquisition.data_buffer should
- be surrounded by 
- pthread_mutex_lock(&mutex1); and   pthread_mutex_unlock(&mutex1);
-*/
-pthread_mutex_t data_buffer_mutex;
-
 
 int main (int argc, char *argv[])
 {
@@ -136,7 +129,6 @@ int main (int argc, char *argv[])
     }
   
 
-  pthread_mutex_init(&data_buffer_mutex, NULL);
 
 
   // to get a window derived from the builder's window see
@@ -184,6 +176,7 @@ int main (int argc, char *argv[])
   app->run(*window);
 
   delete window;
+
   return 0;
 }
 
