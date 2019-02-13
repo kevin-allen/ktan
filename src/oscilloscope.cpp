@@ -1,4 +1,4 @@
-#define DEBUG_OSC
+//#define DEBUG_OSC
 #include "oscilloscope.h"
 #include <stdlib.h> 
 #include <stdint.h>

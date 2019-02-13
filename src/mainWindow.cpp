@@ -311,9 +311,12 @@ void mainWindow::start_recording(){
       record_toolbutton_connection = record_toolbutton->signal_toggled().connect(sigc::mem_fun(*this, &mainWindow::on_record_toolbutton_toggled));
       return;
     }
+  
   pthread_create(&recording_thread, NULL, &recording::recording_thread_helper, rec);
   statusbar_timeout_connection = Glib::signal_timeout().connect(tslot,1000); 
-  
+#ifdef DEBUG_WIN
+  cerr << "mainWindow::start_recording(), recording thread created\n";
+#endif
   if(osc_flag==true)
     osc->start_oscilloscope();
 }
@@ -374,7 +377,7 @@ void mainWindow::on_record_toolbutton_toggled()
 bool mainWindow::on_sm_timeout()
 {
 #ifdef DEBUG_WIN
-  cerr << "entering mainWindow::on_sm_timeout()\n";
+  //  cerr << "entering mainWindow::on_sm_timeout()\n";
 #endif
     
   if(sm->get_start_osc()==1){

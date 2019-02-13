@@ -1,4 +1,4 @@
-#define DEBUG_BUF
+//#define DEBUG_BUF
 #include "dataBuffer.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -191,7 +191,6 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
   
 #ifdef DEBUG_BUF
   cerr << "***entering dataBuffer::getNewData()***\n";
-  int samplesToCopy = 0; // needs to be thread unique
   
   // prevent changing the buffer while working with it
   pthread_mutex_lock(&data_buffer_mutex);
@@ -249,7 +248,7 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
     }
 
   // number of samples to copy
-  samplesToCopy=number_samples_read-firstSample;
+  int samplesToCopy=number_samples_read-firstSample;
   // get index of start of coppy
   int index_copy_start=(index_next_sample)-samplesToCopy; // 
   if(index_copy_start<0)
