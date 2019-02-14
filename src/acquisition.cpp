@@ -1,4 +1,4 @@
-//#define DEBUG_ACQ
+#define DEBUG_ACQ
 #include "acquisition.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
