@@ -49,7 +49,7 @@ class dataBuffer
   short int* buffer;// buffer to get data from comedi devices
   int addAtEnd;
   int sampling_rate; // in Hz;
-  shared_memory_data smd;
+
 };
 
 

@@ -53,8 +53,7 @@ void dataBuffer::resetData()
   number_samples_in_buffer=0; // number of valid samples in buffer
   index_next_sample=0;
 
-  // reset the data in shared_memory_data class
-  smd.initialize(number_channels,sampling_rate);
+
   
   pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
@@ -82,7 +81,6 @@ void dataBuffer::setNumChannels(int numChannels)
   pthread_mutex_lock(&data_buffer_mutex);
   number_channels=numChannels;
   max_number_samples_in_buffer=buffer_size/number_channels; // number of valid samples in buffer
-  smd.initialize(number_channels,sampling_rate); // update the shared_memory_data
   pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::setNumChannels(int )\n";
@@ -102,7 +100,6 @@ unsigned long int dataBuffer::get_number_samples_read()
 void dataBuffer::set_sampling_rate(int sr)
 {
   sampling_rate=sr;
-  smd.initialize(number_channels,sampling_rate);
 
 }
 int dataBuffer::get_sampling_rate()

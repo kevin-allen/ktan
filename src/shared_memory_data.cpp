@@ -2,7 +2,7 @@
  class to share data with other
  programs running on the same computer
  **************************************************************/
-#define DEBUG_SHARE_DATA
+//#define DEBUG_SHARE_DATA
 #include "shared_memory_data.h"
 #include <iostream>
 #include <stdlib.h> 

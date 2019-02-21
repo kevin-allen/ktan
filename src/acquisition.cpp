@@ -82,13 +82,21 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
 
   evalBoard = new Rhd2000EvalBoard;
+  
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition(), openBoardBit()\n";
+#endif
   set_successfully=openBoardBit();
   if(set_successfully==false)
     {
       cerr << "acquisition::acquisition(), problem opening the board\n";
       return ;
     }
-  
+
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition(), boardBit opened successfully\n";
+#endif
+
   /*************************************
    code to be replaced by minimal code 
   ************************************/
@@ -100,7 +108,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
   findConnectedAmplifiers(); // intan boards
 
-
+ 
   setDacThreshold1(0);
   setDacThreshold2(0);
   setDacThreshold3(0);
@@ -110,6 +118,10 @@ acquisition::acquisition(dataBuffer* dbuffer)
   setDacThreshold7(0);
   setDacThreshold8(0);
 
+
+  //
+
+  
   evalBoard->enableDacHighpassFilter(false);
   evalBoard->setDacHighpassFilter(250.0);
 
@@ -125,7 +137,6 @@ acquisition::acquisition(dataBuffer* dbuffer)
   cerr << "number of amplifier channels:" <<  numAmplifierChannels << ", number of digital input channels " << numDigitalInputChannels <<"\n";
 #endif
   
-
   
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
@@ -152,7 +163,6 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
-  //  evalBoard->resetBoard();
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
@@ -241,7 +251,7 @@ void acquisition::openInterfaceBoard()
   cerr << "evaluation board mode: " << evalBoardMode << '\n';
 #endif
 
-
+ 
   changeSampleRate(14); 
 
   // Select RAM Bank 0 for AuxCmd3 initially, so the ADC is calibrated.

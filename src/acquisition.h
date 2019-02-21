@@ -7,7 +7,7 @@
 #define CHIP_ID_RHD2164_B  1000
 #define REGISTER_59_MISO_A  53
 #define REGISTER_59_MISO_B  58
-#define SAMPLES_PER_DATA_BLOCK  60 // was 60
+#define SAMPLES_PER_DATA_BLOCK 60 // also defined in rhd2000DataBlock.h
 #define ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS 16
 #define ACQUISITION_SLEEP_TIME_MS 0.5 // if > 2 and smaller than 20, I get problem with buffer overflow. don't know why
 

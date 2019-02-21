@@ -17,7 +17,7 @@
 //
 // See http://www.intantech.com for documentation and product information.
 //----------------------------------------------------------------------------------
-//#define DEBUG_EVAL
+#define DEBUG_EVAL
 
 #include <iostream>
 #include <iomanip>
@@ -46,11 +46,9 @@ Rhd2000EvalBoard::Rhd2000EvalBoard()
     int i;
     sampleRate = SampleRate30000Hz; // Rhythm FPGA boots up with 30.0 kS/s/channel sampling rate
     numDataStreams = 0;
-
     for (i = 0; i < MAX_NUM_DATA_STREAMS; ++i) {
-        dataStreamEnabled[i] = 0;
+      dataStreamEnabled[i] = 0;
     }
-
     cableDelay.resize(4, -1);
 }
 
@@ -70,8 +68,6 @@ int Rhd2000EvalBoard::open()
 #ifdef DEBUG_EVAL
     cerr << "---- Intan Technologies ---- Rhythm RHD2000 Controller v1.0 ----" << endl << endl;
 #endif
-
-
     if (okFrontPanelDLL_LoadLib(NULL) == false) {
       cerr << "FrontPanel DLL could not be loaded.  " <<
 	"Make sure this DLL is in the application start directory." << endl;
@@ -79,12 +75,9 @@ int Rhd2000EvalBoard::open()
     }
     okFrontPanelDLL_GetVersion(dll_date, dll_time);
 
-
 #ifdef DEBUG_EVAL
     cerr << endl << "FrontPanel DLL loaded.  Built: " << dll_date << "  " << dll_time << endl;
 #endif
-    
-
 
     dev = new okCFrontPanel;
 
@@ -327,7 +320,7 @@ void Rhd2000EvalBoard::initialize()
 bool Rhd2000EvalBoard::setSampleRate(AmplifierSampleRate newSampleRate)
 {
 #ifdef DEBUG_EVAL
-  cerr << "Rhd2000EvalBoard::setSampleRate(" << newSampleRate << ")\n";
+  cerr << "entering Rhd2000EvalBoard::setSampleRate(" << newSampleRate << ")\n";
 #endif
 
     // Assuming a 100 MHz reference clock is provided to the FPGA, the programmable FPGA clock frequency
@@ -468,7 +461,11 @@ bool Rhd2000EvalBoard::setSampleRate(AmplifierSampleRate newSampleRate)
 
     // Wait for DataClkLocked = 1 before allowing data acquisition to continue
     while (isDataClockLocked() == false) {}
+#ifdef DEBUG_EVAL
+  cerr << "leaving Rhd2000EvalBoard::setSampleRate(" << newSampleRate << ")\n";
+#endif
 
+    
     return(true);
 }
 
@@ -1594,9 +1591,7 @@ int Rhd2000EvalBoard::queueToFile(queue<Rhd2000DataBlock> &dataQueue, ofstream &
 #ifdef DEBUG_EVAL
   cerr << "Rhd2000EvalBoard::queueToFile()\n";
 #endif
-
     int count = 0;
-
     while (!dataQueue.empty()) {
         dataQueue.front().write(saveOut, getNumEnabledDataStreams());
         dataQueue.pop();
