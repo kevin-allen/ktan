@@ -4,6 +4,7 @@
 #include <string>
 #include <queue>
 #include "timeKeeper.h"
+#include "shared_memory_data.h"
 #include <pthread.h> // to be able to create threads
 
 using namespace std;
@@ -48,8 +49,8 @@ class dataBuffer
   short int* buffer;// buffer to get data from comedi devices
   int addAtEnd;
   int sampling_rate; // in Hz;
+  shared_memory_data smd;
 };
-
 
 
 #endif

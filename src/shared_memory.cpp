@@ -1,3 +1,7 @@
+/**************************************************************
+ class to start or stop recording/oscilloscope from a different 
+ program running on the same computer
+ **************************************************************/
 //#define DEBUG_SHARE
 #include "shared_memory.h"
 #include <iostream>
@@ -77,4 +81,3 @@ void shared_memory::set_start_osc(int val){ksm->start_osc=val;}
 void shared_memory::set_stop_osc(int val){ksm->stop_osc=val;}
 void shared_memory::set_start_rec(int val){ksm->start_rec=val;}
 void shared_memory::set_stop_rec(int val){ksm->stop_rec=val;}
-

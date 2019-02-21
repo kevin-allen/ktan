@@ -1,4 +1,4 @@
-//#define DEBUG_BUF
+#define DEBUG_BUF
 #include "dataBuffer.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -52,6 +52,10 @@ void dataBuffer::resetData()
   oldest_sample_number=0; // oldest sample number currently in buffer
   number_samples_in_buffer=0; // number of valid samples in buffer
   index_next_sample=0;
+
+  // reset the data in shared_memory_data class
+  smd.initialize(number_channels,sampling_rate);
+  
   pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "pthread_mutex_unlock &data_buffer_mutex\n";
@@ -78,6 +82,7 @@ void dataBuffer::setNumChannels(int numChannels)
   pthread_mutex_lock(&data_buffer_mutex);
   number_channels=numChannels;
   max_number_samples_in_buffer=buffer_size/number_channels; // number of valid samples in buffer
+  smd.initialize(number_channels,sampling_rate); // update the shared_memory_data
   pthread_mutex_unlock(&data_buffer_mutex);
 #ifdef DEBUG_BUF
   cerr << "leaving dataBuffer::setNumChannels(int )\n";
@@ -92,6 +97,19 @@ unsigned long int dataBuffer::get_number_samples_read()
 {
   return number_samples_read;
 }
+
+
+void dataBuffer::set_sampling_rate(int sr)
+{
+  sampling_rate=sr;
+  smd.initialize(number_channels,sampling_rate);
+
+}
+int dataBuffer::get_sampling_rate()
+{
+  return sampling_rate;
+}
+
 
 void dataBuffer::addNewData(int numSamples,short int* data)
 {
@@ -331,163 +349,3 @@ int dataBuffer::getNewData(unsigned long int firstSample, short int* data, int m
 #endif
   return samplesToCopy;
 }
-
-void dataBuffer::set_sampling_rate(int sr)
-{
-  sampling_rate=sr;
-}
-int dataBuffer::get_sampling_rate()
-{
-  return sampling_rate;
-}
-
-
-
-/*
-int dataBuffer::getNewDataReverse(unsigned long int firstSample, double* data, int maxSamples,int numChannels, unsigned int* channelList, double factor_microvolt)
-{ // copy data from the buffer to data
-  // returns the number of new samples copied in data
-  // multiply data by factor_microvolt
-#ifdef DEBUG_BUF
-  cerr << "***entering dataBuffer::getNewDataReverse(int, short int* )***\n";
-
-  // prevent changing the buffer while working with it
-  pthread_mutex_lock(&data_buffer_mutex);
-#ifdef DEBUG_BUF
-  cerr << "dataBuffer::getNewDataReverse(), data_buffer_mutex locked\n";
-#endif
-    
-  cerr << "dataBuffer::getNewDataReverse(), firstSample: " << firstSample << " maxSamples: " << maxSamples << " numChannels: " << numChannels << '\n';
-  cerr << "dataBuffer::getNewDataReverse(), number_samples_read: " << number_samples_read << " index_next_sample:" << index_next_sample <<  " max_number_samples_in_buffer:" << max_number_samples_in_buffer << '\n'; 
-#endif
-  if(number_samples_read==0)
-    { // buffer is empty
-      pthread_mutex_unlock(&data_buffer_mutex);
-#ifdef DEBUG_BUF
-      cerr << "dataBuffer::getNewDataReverse(), data_buffer_mutex unlocked\n";
-#endif
-
-      return 0;
-    }
-  // check if firstSample is in the buffer
-  if(firstSample>number_samples_read)
-    {
-      pthread_mutex_unlock(&data_buffer_mutex);
-#ifdef DEBUG_BUF
-      cerr << "dataBuffer::getNewDataReverse(), data_buffer_mutex unlocked\n";
-#endif
-      cerr << "dataBuffer::getNewDataReverse(), firstSample: " << firstSample << " is larger than number of samples read: " << number_samples_read << '\n';
-      return 0;
-    }
-  if(number_samples_read>max_number_samples_in_buffer)
-    if(firstSample<number_samples_read-max_number_samples_in_buffer)
-      {
-	pthread_mutex_unlock(&data_buffer_mutex);
-#ifdef DEBUG_BUF
-	cerr << "dataBuffer::getNewDataReverse(), data_buffer_mutex unlocked\n";
-#endif
-	cerr << "dataBuffer::getNewDataReverse(), num_samples_read:" << number_samples_read << " firstSample: " << firstSample << " is smaller than the first sample in the buffer. So some data are missing\n";
-	return -1;
-      }
-
-  // check if channels are all present in the buffer
-  for(int i = 0; i < numChannels;i++)
-    {
-      if(channelList[i]>=number_channels)
-	{
-	  cerr << "dataBuffer::getNewDataReverse(), channel " << i << " of the channelList is out of range: " << channelList[i] << "\n";
-	  cerr << "it should be between 0 and " << number_channels << '\n';
-	  pthread_mutex_unlock(&data_buffer_mutex);
-#ifdef DEBUG_BUF
-	  cerr << "dataBuffer::getNewDataReverse(), data_buffer_mutex unlocked\n";
-#endif
-	  return -1;
-	}
-    }
-
-  // number of samples to copy
-  samplesToCopy=number_samples_read-firstSample;
-  // get index of start of coppy
-  index_copy_start=(index_next_sample)-samplesToCopy; 
-  if(index_copy_start<0)
-    index_copy_start=max_number_samples_in_buffer+index_copy_start;
-  if(samplesToCopy>maxSamples)
-    {
-      samplesToCopy=maxSamples;
-    }
-
-
-#ifdef DEBUG_BUF
-  cerr << "dataBuffer::getNewDataReverse(), number_samples_read: " << number_samples_read << " samplesToCopy: " << samplesToCopy << " index_copy_start: " << index_copy_start << '\n';
-#endif
-
-
-  // copy the data
-  if(index_copy_start+samplesToCopy<max_number_samples_in_buffer)
-    {// copy the data without wrapping
-#ifdef DEBUG_BUF
-      cerr << "dataBuffer::getNewDataReverse(), copy from dataBuffer without wrap around\n";
-#endif
-
-      for(int sample = 0; sample < samplesToCopy;sample++)
-	for(int channel = 0; channel < numChannels;channel++)
-	  {
-	    if((index_copy_start+sample)*number_channels+channelList[channel]>=buffer_size)
-	      {
-		cerr << "dataBuffer::getNewDataReverse(), about to segment\n";
-		cerr << "dataBuffer::getNewDataReverse(), index_copy_start: " << index_copy_start
-		     << " sample: " << sample << " number_channels: " << number_channels
-		     << " channel: " << channel << " channelList[channel]: " << channelList[channel]
-		     << " index: " << (index_copy_start+sample)*number_channels+channelList[channel] << '\n';
-	      }
-	    assert(index_copy_start+sample>=0);
-	    assert((index_copy_start+sample)*number_channels+channelList[channel]<buffer_size);
-	    data[(sample*numChannels)+channel]=0-(buffer[(index_copy_start+sample)*number_channels+channelList[channel]]*factor_microvolt); // segmentation fault here
-	  }
-      
-    }
-  else
-    {// copy the data in two gos (end of buffer, then start of buffer)
-      copyAtEnd=max_number_samples_in_buffer-index_copy_start;
-#ifdef DEBUG_BUF
-      cerr << "dataBuffer::getNewDataReverse(), copy from dataBuffer with wrap around, copyAtEnd " << copyAtEnd << '\n';
-#endif
-
-      for(int sample = 0; sample < copyAtEnd;sample++)
-	for(int channel = 0; channel < numChannels;channel++)
-	  {
-	    if((index_copy_start+sample)*number_channels+channelList[channel]>=buffer_size)
-	      {
-		cerr << "dataBuffer::getNewDataReverse(), about to segment\n";
-		cerr << "dataBuffer::getNewDataReverse(), index_copy_start: " << index_copy_start
-		     << " sample: " << sample << " number_channels: " << number_channels
-		     << " channel: " << channel << " channelList[channel]: " << channelList[channel]
-		     << " index: " << (index_copy_start+sample)*number_channels+channelList[channel] << '\n';
-	      }
-
-	    assert(index_copy_start+sample>=0);
-	    assert((index_copy_start+sample)*number_channels+channelList[channel]<buffer_size);
-	    data[(sample*numChannels)+channel]=0-(buffer[(index_copy_start+sample)*number_channels+channelList[channel]]*factor_microvolt);
-	  }
-
-      for(int sample = copyAtEnd; sample < samplesToCopy;sample++)
-	for(int channel = 0; channel < numChannels;channel++)
-	  {
-	    assert(index_copy_start+sample>=0);
-	    assert((sample-copyAtEnd)*number_channels+channelList[channel]<buffer_size);
-	    data[(sample*numChannels)+channel]=0-(buffer[(sample-copyAtEnd)*number_channels+channelList[channel]]*factor_microvolt);
-	  }
-    }
-  
-  pthread_mutex_unlock(&data_buffer_mutex);
-#ifdef DEBUG_BUF
-  cerr << "dataBuffer::getNewDataReverse(), data_buffer_mutex unlocked\n";
-#endif
-
-#ifdef DEBUG_BUF
-  cerr << "leaving dataBuffer::getNewDataReverse(int, short int* )\n\n";
-#endif
-  return samplesToCopy;
-}
-
-*/

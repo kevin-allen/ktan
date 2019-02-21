@@ -89,13 +89,13 @@ acquisition::acquisition(dataBuffer* dbuffer)
       return ;
     }
   
-  
   /*************************************
    code to be replaced by minimal code 
   ************************************/
   evalBoardMode=0;  
   //checked
-  openInterfaceBoard();// opel kelly 
+  openInterfaceBoard();// opel kelly
+
   changeSampleRate(14);
 
   findConnectedAmplifiers(); // intan boards
@@ -122,7 +122,7 @@ acquisition::acquisition(dataBuffer* dbuffer)
   totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
   
 #ifdef DEBUG_ACQ
-  cerr << numAmplifierChannels << " " << numDigitalInputChannels <<"\n";
+  cerr << "number of amplifier channels:" <<  numAmplifierChannels << ", number of digital input channels " << numDigitalInputChannels <<"\n";
 #endif
   
 
@@ -152,7 +152,7 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
-  
+  //  evalBoard->resetBoard();
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
@@ -1151,18 +1151,26 @@ void *acquisition::acquisition_thread_function(void)
     {
       // this puts the new usb blocks into dataQueue 
       newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
+                                                                                  // I am at about 35 ms with 3*64 amplifiers
       // If new data is ready, then read it.
       if (newDataReady) 
 	{
-	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data 
-	  acquistion_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
-	  //cerr << "new data at " << acquistion_duration_ts.tv_sec << " " << acquistion_duration_ts.tv_nsec/1000000 << '\n';
+
+	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data
+	  inter_acquisition_timespec=tk.diff(&time_last_sample_acquired_timespec,&now_ts);
+	  acquisition_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
+	  
+#ifdef DEBUG_ACQ
+	  cerr << "acquisition::acquisition_thread_function, new data arrived at " << acquisition_duration_ts.tv_sec << "." << acquisition_duration_ts.tv_nsec/1000000 << "sec\n";
+	  cerr << "acquisition::acquisition_thread_function, inter acquisition delay " << inter_acquisition_timespec.tv_sec *1000+inter_acquisition_timespec.tv_nsec/1000000 << "ms\n";
+#endif
 	  // Read waveform data from USB interface board.
 	  move_to_dataBuffer();
 	  // play with led to impress visitors
 	  advanceLED();
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
 	  checkFifoOK();
+	  time_last_sample_acquired_timespec=now_ts;
 	  
 	}
       // take a break here instead of looping 100% of PCU

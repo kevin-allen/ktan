@@ -2,7 +2,7 @@ bin_PROGRAMS =  ktan ktanStartStop
 
 ktanStartStop_SOURCE = ktanStartStop.c
 
-ktan_SOURCES = main.cpp rhd2000evalboard.cpp rhd2000datablock.cpp rhd2000registers.cpp okFrontPanelDLL.cpp mainWindow.cpp acquisition.cpp recording.cpp shared_memory.cpp timeKeeper.cpp dataBuffer.cpp channelGroup.cpp oscilloscope.cpp
+ktan_SOURCES = main.cpp rhd2000evalboard.cpp rhd2000datablock.cpp rhd2000registers.cpp okFrontPanelDLL.cpp mainWindow.cpp acquisition.cpp recording.cpp shared_memory.cpp shared_memory_data.cpp timeKeeper.cpp dataBuffer.cpp channelGroup.cpp oscilloscope.cpp
 ktan_CPPFLAGS = @GTKMM_CFLAGS@  -DDATADIR='"$(datadir)"' 
 ktan_LDADD = @GTKMM_LIBS@
 

@@ -17,7 +17,7 @@
 //
 // See http://www.intantech.com for documentation and product information.
 //----------------------------------------------------------------------------------
-#define DEBUG_EVAL
+//#define DEBUG_EVAL
 
 #include <iostream>
 #include <iomanip>

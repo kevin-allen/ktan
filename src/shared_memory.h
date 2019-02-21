@@ -1,3 +1,7 @@
+/**************************************************************
+ class to start or stop recording/oscilloscope from a different 
+ program running on the same computer
+ **************************************************************/
 #ifndef SHARE_H
 #define SHARE_H
 #include <pthread.h> // to be able to create threads
@@ -35,9 +39,4 @@ class shared_memory
   int shared_memory_des;
 };
 
-
-
 #endif
-
-
-  
