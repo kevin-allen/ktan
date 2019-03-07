@@ -1,4 +1,4 @@
-#define DEBUG_BUF
+//#define DEBUG_BUF
 #include "dataBuffer.h"
 #include <stdlib.h> 
 #include <stdint.h>

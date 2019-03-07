@@ -17,7 +17,7 @@
 //
 // See http://www.intantech.com for documentation and product information.
 //----------------------------------------------------------------------------------
-#define DEBUG_EVAL
+//#define DEBUG_EVAL
 
 #include <iostream>
 #include <iomanip>
@@ -262,6 +262,7 @@ void Rhd2000EvalBoard::initialize()
 
     clearTtlOut();
 
+    
     enableDac(0, false);
     enableDac(1, false);
     enableDac(2, false);
@@ -279,19 +280,19 @@ void Rhd2000EvalBoard::initialize()
     selectDacDataStream(6, 0);
     selectDacDataStream(7, 0);
     selectDacDataChannel(0, 0);
-    selectDacDataChannel(1, 0);
-    selectDacDataChannel(2, 0);
-    selectDacDataChannel(3, 0);
-    selectDacDataChannel(4, 0);
-    selectDacDataChannel(5, 0);
-    selectDacDataChannel(6, 0);
-    selectDacDataChannel(7, 0);
+    selectDacDataChannel(1, 1);
+    selectDacDataChannel(2, 2);
+    selectDacDataChannel(3, 3);
+    selectDacDataChannel(4, 4);
+    selectDacDataChannel(5, 5);
+    selectDacDataChannel(6, 6);
+    selectDacDataChannel(7, 7);
 
     setDacManual(32768);    // midrange value = 0 V
-
-    setDacGain(0);
+    setDacGain(1);
     setAudioNoiseSuppress(0);
 
+    
     setTtlMode(1);          // Digital outputs 0-7 are DAC comparators; 8-15 under manual control
 
     setDacThreshold(0, 32768, true);
@@ -1000,7 +1001,7 @@ void Rhd2000EvalBoard::setDataSource(int stream, BoardDataSource dataSource)
 void Rhd2000EvalBoard::enableDataStream(int stream, bool enabled)
 {
 #ifdef DEBUG_EVAL
-  cerr << "Rhd2000EvalBoard::enableDataStream()\n";
+  cerr << "Rhd2000EvalBoard::enableDataStream() " << stream << " " << enabled << "\n";
 #endif
 
     if (stream < 0 || stream > (MAX_NUM_DATA_STREAMS - 1)) {
@@ -1121,7 +1122,7 @@ void Rhd2000EvalBoard::setLedDisplay(int ledArray[])
 void Rhd2000EvalBoard::enableDac(int dacChannel, bool enabled)
 {
 #ifdef DEBUG_EVAL
-  cerr << "Rhd2000EvalBoard::enableDac()\n";
+  cerr << "Rhd2000EvalBoard::enableDac() " << dacChannel << " " << enabled << "\n";
 #endif
 
     if (dacChannel < 0 || dacChannel > 7) {

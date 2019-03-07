@@ -1,4 +1,4 @@
-#define DEBUG_REC
+//#define DEBUG_REC
 #include "recording.h"
 #include <stdlib.h> 
 #include <stdint.h>
@@ -60,10 +60,8 @@ recording::~recording()
 #ifdef DEBUG_REC
   cerr << "entering recording::~recording()\n";
 #endif
-  cerr << "recording::~recording() deleting buffer\n";
-  delete[] buffer;
 
-  cerr << "recording::~recording() destroy rec_mutex\n";
+  delete[] buffer;
   pthread_mutex_destroy(&rec_mutex);
 
 #ifdef DEBUG_REC
@@ -90,7 +88,7 @@ void recording::set_file_base()
     }
   else
     {
-      file_base="dino1";
+      file_base="defaultName";
     }
 
   file.close();

@@ -89,7 +89,7 @@ class acquisition
   int ttlOut[16];
   // variable changed with sampling rate
   int sampleRate;
-  double boardSampleRate;
+  double boardSamplingRate;
   int numUsbBlocksToRead;
   // cable length for the different ports
   double cableLengthPortA;  // in meters
@@ -165,7 +165,8 @@ class acquisition
   void setDacThreshold6(int threshold);
   void setDacThreshold7(int threshold);
   void setDacThreshold8(int threshold);
-
+  void setDacOutput();
+  
 };
 
 
