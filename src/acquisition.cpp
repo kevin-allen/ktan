@@ -110,7 +110,13 @@ acquisition::acquisition(dataBuffer* dbuffer)
   //checked
   openInterfaceBoard();// opel kelly
 
-  findConnectedAmplifiers(); // intan boards
+  set_successfully=findConnectedAmplifiers(); // intan boards
+  if(set_successfully==false)
+    {
+      cerr << "acquisition::acquisition(), problem finding Intan chips\n";
+      return ;
+    }
+  
 
   changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz); // this should always come after findConnectedAmplifiers()
    
@@ -126,6 +132,8 @@ acquisition::acquisition(dataBuffer* dbuffer)
   cout << "Number of amplifier channels: " <<  numAmplifierChannels << "\n";
   cout << "Number of digital input channels: " << numDigitalInputChannels <<"\n";
   cout << "Board sampling rate: " << boardSamplingRate << '\n';
+
+
   
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
@@ -292,7 +300,7 @@ bool acquisition::get_is_acquiring()
 }
 
 
-void acquisition::openInterfaceBoard()
+bool acquisition::openInterfaceBoard()
 {
  
 #ifdef DEBUG_ACQ
@@ -357,9 +365,10 @@ void acquisition::openInterfaceBoard()
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::openInterfaceBoard()\n";
 #endif
+  return true;
 }
 
-void acquisition::findConnectedAmplifiers()
+bool acquisition::findConnectedAmplifiers()
 {
 #ifdef DEBUG_ACQ
   cerr << "entering acquisition::findConnectedAmplifiers()\n";
@@ -530,6 +539,12 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
   cerr << "Number of Intan chips: " << numChips << '\n';
 #endif
+
+  if(numChips==0)
+    {
+      cerr << "No Intan chip was detected\n";
+      return false;
+    }
 
 
   // Set cable delay settings that yield good communication with each
@@ -738,6 +753,7 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::findConnectedAmplifiers()\n";
 #endif
+  return true;
 }
 
 

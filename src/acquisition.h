@@ -146,8 +146,8 @@ class acquisition
 
 
   // function to operate the intan evaluation board
-  void openInterfaceBoard();
-  void findConnectedAmplifiers();
+  bool openInterfaceBoard();
+  bool findConnectedAmplifiers();
   void changeSampleRate(int sampleRateIndex);
   int deviceId(Rhd2000DataBlock *dataBlock, int stream, int &register59Value);
   void updateAuxDigOut();
