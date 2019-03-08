@@ -88,7 +88,7 @@ void recording::set_file_base()
     }
   else
     {
-      file_base="dino1";
+      file_base="defaultName";
     }
 
   file.close();

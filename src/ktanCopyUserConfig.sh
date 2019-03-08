@@ -37,7 +37,7 @@ fi
 user=$1
 
 for file in `echo "ktan.max.recording.time ktan.oscilloscope.group.channels 
-ktan.recording.channels"`
+ktan.recording.channels ktan.dac.output"`
 do
 	if [ -e "$file.$user" ] 
 	then	

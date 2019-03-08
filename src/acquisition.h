@@ -7,7 +7,7 @@
 #define CHIP_ID_RHD2164_B  1000
 #define REGISTER_59_MISO_A  53
 #define REGISTER_59_MISO_B  58
-#define SAMPLES_PER_DATA_BLOCK  60
+#define SAMPLES_PER_DATA_BLOCK 60 // also defined in rhd2000DataBlock.h
 #define ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS 16
 #define ACQUISITION_SLEEP_TIME_MS 0.5 // if > 2 and smaller than 20, I get problem with buffer overflow. don't know why
 
@@ -89,7 +89,7 @@ class acquisition
   int ttlOut[16];
   // variable changed with sampling rate
   int sampleRate;
-  double boardSampleRate;
+  double boardSamplingRate;
   int numUsbBlocksToRead;
   // cable length for the different ports
   double cableLengthPortA;  // in meters
@@ -136,7 +136,9 @@ class acquisition
 
   struct timespec time_last_sample_acquired_timespec; 
   struct timespec inter_acquisition_sleep_timespec; // between read operations to driver
-  double inter_acquisition_sleep_ms;
+  struct timespec inter_acquisition_timespec;
+  struct timespec acquisition_duration_ts;
+   double inter_acquisition_sleep_ms;
   struct timespec timespec_pause_restat_acquisition_thread; // allow acquisition to complete
   struct timespec req;
   double pause_restart_acquisition_thread_ms;
@@ -163,7 +165,8 @@ class acquisition
   void setDacThreshold6(int threshold);
   void setDacThreshold7(int threshold);
   void setDacThreshold8(int threshold);
-
+  void setDacOutput();
+  
 };
 
 

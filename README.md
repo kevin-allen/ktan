@@ -1,13 +1,17 @@
 # ktan
 
-ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies. The low level code to interface with the board comes from the RHD2000 interface software of Intan Technologies. The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Fredora 19 and on Ubuntu 14.04 LTS.
+ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies. The low level code to interface with the board comes from the RHD2000 interface software of Intan Technologies. The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Ubuntu 14 to 18 LTS.
 
 # Features
 
 * Record up to at least 64 channels (depending on hardware).
 * Rewind the oscilloscope to re-examined recently acquired signals.
 * Independent threads for acquisition, recording and oscilloscope to take advantage of multi-core processors.
-* Control recording and visualize data from a remote computer via ssh (-X). 
+* Control recording and visualize data from a remote computer via ssh (-X).
+
+# Tests
+
+* We could record with ktan for periods of 15 hours without problems.
 
 # Install
 

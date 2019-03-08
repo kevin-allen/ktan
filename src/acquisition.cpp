@@ -1,4 +1,4 @@
-//#define DEBUG_ACQ
+//define DEBUG_ACQ
 #include "acquisition.h"
 #include "rhd2000evalboard.h"
 #include "rhd2000datablock.h"
@@ -13,7 +13,13 @@
 #include <fcntl.h>
 #include <time.h>
 #include <pthread.h>
-
+#include <pwd.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <gtkmm.h>
+#include <sys/statvfs.h>
+#include <fstream>
 
 
 acquisition::acquisition(dataBuffer* dbuffer)
@@ -82,37 +88,33 @@ acquisition::acquisition(dataBuffer* dbuffer)
 
 
   evalBoard = new Rhd2000EvalBoard;
+  
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition(), openBoardBit()\n";
+#endif
   set_successfully=openBoardBit();
   if(set_successfully==false)
     {
       cerr << "acquisition::acquisition(), problem opening the board\n";
       return ;
     }
-  
-  
+
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::acquisition(), boardBit opened successfully\n";
+#endif
+
   /*************************************
    code to be replaced by minimal code 
   ************************************/
   evalBoardMode=0;  
   //checked
-  openInterfaceBoard();// opel kelly 
-  changeSampleRate(14);
+  openInterfaceBoard();// opel kelly
 
   findConnectedAmplifiers(); // intan boards
 
-
-  setDacThreshold1(0);
-  setDacThreshold2(0);
-  setDacThreshold3(0);
-  setDacThreshold4(0);
-  setDacThreshold5(0);
-  setDacThreshold6(0);
-  setDacThreshold7(0);
-  setDacThreshold8(0);
-
-  evalBoard->enableDacHighpassFilter(false);
-  evalBoard->setDacHighpassFilter(250.0);
-
+  changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz); // this should always come after findConnectedAmplifiers()
+   
+  setDacOutput();
 
   updateAuxDigOut();
     
@@ -121,11 +123,9 @@ acquisition::acquisition(dataBuffer* dbuffer)
   numDigitalInputChannels = ACQUISITION_NUM_DIGITAL_INPUTS_CHANNELS;
   totalNumChannels=numAmplifierChannels+numDigitalInputChannels;
   
-#ifdef DEBUG_ACQ
-  cerr << numAmplifierChannels << " " << numDigitalInputChannels <<"\n";
-#endif
-  
-
+  cout << "Number of amplifier channels: " <<  numAmplifierChannels << "\n";
+  cout << "Number of digital input channels: " << numDigitalInputChannels <<"\n";
+  cout << "Board sampling rate: " << boardSamplingRate << '\n';
   
   localBuffer = new short int [numStreams*SAMPLES_PER_DATA_BLOCK*numUsbBlocksToRead*totalNumChannels];
   db->setNumChannels(totalNumChannels);
@@ -135,16 +135,12 @@ acquisition::acquisition(dataBuffer* dbuffer)
   inter_acquisition_sleep_timespec=tk.set_timespec_from_ms(inter_acquisition_sleep_ms);
   pause_restart_acquisition_thread_ms=100;
   timespec_pause_restat_acquisition_thread=tk.set_timespec_from_ms(pause_restart_acquisition_thread_ms);
-  
-  
+    
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition()\n";
 #endif
 
-
-
 }
-
 acquisition::~acquisition()
 {
 
@@ -152,7 +148,6 @@ acquisition::~acquisition()
   cerr << "entering acquisition::~acquisition()\n";
 #endif
 
-  
   delete[] dacEnabled;
   delete[] portEnabled;
   delete[] chipId;
@@ -167,6 +162,74 @@ acquisition::~acquisition()
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::~acquisition()\n";
 #endif
+}
+
+void acquisition::setDacOutput()
+{
+#ifdef DEBUG_ACQ
+  cerr << "entering acquisition::setDacOutput()\n";
+#endif
+  struct passwd *p;
+  char *username=getenv("USER");
+  char hd[255];
+  p=getpwnam(username);
+  strcpy(hd, p->pw_dir);
+  strcat(hd,"/");
+  
+  char* base_file_name=(char*)"ktan.dac.output";
+  base_file_name=strcat(hd,base_file_name);
+  ifstream file(base_file_name);
+
+  // disable the Dac channels by default
+  evalBoard->enableDac(0, false);
+  evalBoard->enableDac(1, false);
+  evalBoard->enableDac(2, false);
+  evalBoard->enableDac(3, false);
+  evalBoard->enableDac(4, false);
+  evalBoard->enableDac(5, false);
+  evalBoard->enableDac(6, false);
+  evalBoard->enableDac(7, false);
+
+  
+  if(file.is_open()==TRUE)
+    {// read the file, set the Dac
+      cout << "Setting DAC outputs\n";
+      int numDacChannels = 0;
+      int DacChannels[8];
+      while(numDacChannels < 8 && file>>DacChannels[numDacChannels]){
+	numDacChannels++;
+      }
+      
+      for(int i = 0; i < numDacChannels; i++)
+	{
+	  int chan=DacChannels[i];
+	  int stream=chan/32;
+	  int chanOnStream=chan%32;
+	    
+	  cout << "Dac channel " << i << " set to data channel " << chan << " stream " << stream << " chanOnStream " << chanOnStream << '\n';
+	  if(chan>=numAmplifierChannels||chan<0)
+	    {
+	      cerr << "*** Channel number for Dac channel " << i << " is out or range ***\n";
+	      cerr << "*** Is " << chan << " but should be between 0 and " << numAmplifierChannels << " ***\n";
+	      return;
+	    }
+	  else
+	    {
+	      evalBoard->enableDac(i, true);
+	      evalBoard->selectDacDataStream(i, stream);
+	      evalBoard->selectDacDataChannel(i, chanOnStream);
+	    }
+	}
+      evalBoard->setDacManual(32768);
+      evalBoard->setDacGain(2);
+      evalBoard->setAudioNoiseSuppress(0);
+    }
+  file.close();
+  
+#ifdef DEBUG_ACQ
+  cerr << "leaving acquisition::setDacOutput()\n";
+#endif
+
 }
 
 bool acquisition::openBoardBit()
@@ -241,8 +304,7 @@ void acquisition::openInterfaceBoard()
   cerr << "evaluation board mode: " << evalBoardMode << '\n';
 #endif
 
-
-  changeSampleRate(14); 
+ 
 
   // Select RAM Bank 0 for AuxCmd3 initially, so the ADC is calibrated.
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortA, Rhd2000EvalBoard::AuxCmd3, 0);
@@ -285,38 +347,7 @@ void acquisition::openInterfaceBoard()
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortB, Rhd2000EvalBoard::AuxCmd3,1);
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortC, Rhd2000EvalBoard::AuxCmd3,1);
   evalBoard->selectAuxCommandBank(Rhd2000EvalBoard::PortD, Rhd2000EvalBoard::AuxCmd3,1);
-  
-
-
-    // Set default configuration for all eight DACs on interface board.
-  evalBoard->enableDac(0, false);
-  evalBoard->enableDac(1, false);
-  evalBoard->enableDac(2, false);
-  evalBoard->enableDac(3, false);
-  evalBoard->enableDac(4, false);
-  evalBoard->enableDac(5, false);
-  evalBoard->enableDac(6, false);
-  evalBoard->enableDac(7, false);
-  evalBoard->selectDacDataStream(0, 8);   // Initially point DACs to DacManual1 input
-  evalBoard->selectDacDataStream(1, 8);
-  evalBoard->selectDacDataStream(2, 8);
-  evalBoard->selectDacDataStream(3, 8);
-  evalBoard->selectDacDataStream(4, 8);
-  evalBoard->selectDacDataStream(5, 8);
-  evalBoard->selectDacDataStream(6, 8);
-  evalBoard->selectDacDataStream(7, 8);
-  evalBoard->selectDacDataChannel(0, 0);
-  evalBoard->selectDacDataChannel(1, 1);
-  evalBoard->selectDacDataChannel(2, 0);
-  evalBoard->selectDacDataChannel(3, 0);
-  evalBoard->selectDacDataChannel(4, 0);
-  evalBoard->selectDacDataChannel(5, 0);
-  evalBoard->selectDacDataChannel(6, 0);
-  evalBoard->selectDacDataChannel(7, 0);
-  evalBoard->setDacManual(32768);
-  evalBoard->setDacGain(0);
-  evalBoard->setAudioNoiseSuppress(0);
-  
+    
   evalBoard->setCableLengthMeters(Rhd2000EvalBoard::PortA, 0.0);
   evalBoard->setCableLengthMeters(Rhd2000EvalBoard::PortB, 0.0);
   evalBoard->setCableLengthMeters(Rhd2000EvalBoard::PortC, 0.0);
@@ -573,7 +604,6 @@ void acquisition::findConnectedAmplifiers()
 #ifdef DEBUG_ACQ
 	  cerr << "chip id: rhd2216\n";
 #endif
-
 	  numStreamsRequired++;
 	  if (numStreamsRequired <= MAX_NUM_DATA_STREAMS) 
 	    {
@@ -698,7 +728,6 @@ void acquisition::findConnectedAmplifiers()
 	portEnabled[port]=true;
     }
 
-  changeSampleRate(Rhd2000EvalBoard::SampleRate20000Hz);
   
   delete[] portIndex;
   delete[] portIndexOld;
@@ -733,100 +762,100 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   switch (sampleRateIndex) {
   case 0:
     sampleRate = Rhd2000EvalBoard::SampleRate1000Hz;
-    boardSampleRate = 1000.0;
+    boardSamplingRate = 1000.0;
     numUsbBlocksToRead = 1;
     break;
   case 1:
     sampleRate = Rhd2000EvalBoard::SampleRate1250Hz;
-    boardSampleRate = 1250.0;
+    boardSamplingRate = 1250.0;
     numUsbBlocksToRead = 1;
     break;
   case 2:
     sampleRate = Rhd2000EvalBoard::SampleRate1500Hz;
-    boardSampleRate = 1500.0;
+    boardSamplingRate = 1500.0;
     numUsbBlocksToRead = 1;
     break;
   case 3:
     sampleRate = Rhd2000EvalBoard::SampleRate2000Hz;
-    boardSampleRate = 2000.0;
+    boardSamplingRate = 2000.0;
     numUsbBlocksToRead = 1;
     break;
   case 4:
     sampleRate = Rhd2000EvalBoard::SampleRate2500Hz;
-    boardSampleRate = 2500.0;
+    boardSamplingRate = 2500.0;
     numUsbBlocksToRead = 1;
     break;
   case 5:
     sampleRate = Rhd2000EvalBoard::SampleRate3000Hz;
-    boardSampleRate = 3000.0;
+    boardSamplingRate = 3000.0;
     numUsbBlocksToRead = 2;
     break;
   case 6:
     sampleRate = Rhd2000EvalBoard::SampleRate3333Hz;
-    boardSampleRate = 10000.0 / 3.0;
+    boardSamplingRate = 10000.0 / 3.0;
     numUsbBlocksToRead = 2;
     break;
   case 7:
     sampleRate = Rhd2000EvalBoard::SampleRate4000Hz;
-    boardSampleRate = 4000.0;
+    boardSamplingRate = 4000.0;
     numUsbBlocksToRead = 2;
     break;
   case 8:
     sampleRate = Rhd2000EvalBoard::SampleRate5000Hz;
-    boardSampleRate = 5000.0;
+    boardSamplingRate = 5000.0;
     numUsbBlocksToRead = 3;
     break;
   case 9:
     sampleRate = Rhd2000EvalBoard::SampleRate6250Hz;
-    boardSampleRate = 6250.0;
+    boardSamplingRate = 6250.0;
     numUsbBlocksToRead = 3;
     break;
   case 10:
     sampleRate = Rhd2000EvalBoard::SampleRate8000Hz;
-    boardSampleRate = 8000.0;
+    boardSamplingRate = 8000.0;
     numUsbBlocksToRead = 4;
     break;
   case 11:
     sampleRate = Rhd2000EvalBoard::SampleRate10000Hz;
-    boardSampleRate = 10000.0;
+    boardSamplingRate = 10000.0;
     numUsbBlocksToRead = 6;
     break;
   case 12:
     sampleRate = Rhd2000EvalBoard::SampleRate12500Hz;
-    boardSampleRate = 12500.0;
+    boardSamplingRate = 12500.0;
     numUsbBlocksToRead = 7;
     break;
   case 13:
     sampleRate = Rhd2000EvalBoard::SampleRate15000Hz;
-    boardSampleRate = 15000.0;
+    boardSamplingRate = 15000.0;
     numUsbBlocksToRead = 8;
     break;
   case 14:
     sampleRate = Rhd2000EvalBoard::SampleRate20000Hz;
-    boardSampleRate = 20000.0;
+    boardSamplingRate = 20000.0;
     numUsbBlocksToRead = 12;
     break;
   case 15:
     sampleRate = Rhd2000EvalBoard::SampleRate25000Hz;
-    boardSampleRate = 25000.0;
+    boardSamplingRate = 25000.0;
     numUsbBlocksToRead = 14;
     break;
   case 16:
     sampleRate = Rhd2000EvalBoard::SampleRate30000Hz;
-    boardSampleRate = 30000.0;
+    boardSamplingRate = 30000.0;
     numUsbBlocksToRead = 16;
     break;
   }
   
     #ifdef DEBUG_ACQ
-  cerr << "New sampling rate " << boardSampleRate << " Hz\n";
+  cerr << "New sampling rate " << boardSamplingRate << " Hz\n";
 #endif
 
 
 
   // Set up an RHD2000 register object using this sample rate to
   // optimize MUX-related register settings.
-  Rhd2000Registers chipRegisters(boardSampleRate);
+  Rhd2000Registers chipRegisters(boardSamplingRate);
   
   
   int commandSequenceLength;
@@ -938,8 +967,8 @@ void acquisition::changeSampleRate(int sampleRateIndex)
   //  evalBoard->setDacHighpassFilter(250); // what is that
 
   // there was possibility to set up highpassFilter here
-  // signalProcessor->setNotchFilter(notchFilterFrequency, notchFilterBandwidth, boardSampleRate);
-  // signalProcessor->setHighpassFilter(highpassFilterFrequency, boardSampleRate);
+  // signalProcessor->setNotchFilter(notchFilterFrequency, notchFilterBandwidth, boardSamplingRate);
+  // signalProcessor->setHighpassFilter(highpassFilterFrequency, boardSamplingRate);
   // evalBoard->setDacHighpassFilter(highpassFilterFrequency);
   
   // some impedance stuff
@@ -1010,7 +1039,7 @@ bool acquisition::start_acquisition()
   // set some variables for acquisition
   dataBlockSize = Rhd2000DataBlock::calculateDataBlockSizeInWords(evalBoard->getNumEnabledDataStreams());
   numBlocksLoaded=0;
-  samplePeriod = 1.0 / boardSampleRate;
+  samplePeriod = 1.0 / boardSamplingRate;
   fifoCapacity = Rhd2000EvalBoard::fifoCapacityInWords();
   // start the board
   evalBoard->setContinuousRunMode(true);
@@ -1151,18 +1180,26 @@ void *acquisition::acquisition_thread_function(void)
     {
       // this puts the new usb blocks into dataQueue 
       newDataReady = evalBoard->readDataBlocks(numUsbBlocksToRead, dataQueue);    // takes about 17 ms at 30 kS/s with 256 amplifiers
+                                                                                  // I am at about 35 ms with 3*64 amplifiers
       // If new data is ready, then read it.
       if (newDataReady) 
 	{
-	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data 
-	  acquistion_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
-	  //cerr << "new data at " << acquistion_duration_ts.tv_sec << " " << acquistion_duration_ts.tv_nsec/1000000 << '\n';
+
+	  clock_gettime(CLOCK_REALTIME, &now_ts); // get the time at which we got these data
+	  inter_acquisition_timespec=tk.diff(&time_last_sample_acquired_timespec,&now_ts);
+	  acquisition_duration_ts=tk.diff(&acquisition_start_ts,&now_ts); // get the duration of recording up to now
+	  
+#ifdef DEBUG_ACQ
+	  cerr << "acquisition::acquisition_thread_function, new data arrived at " << acquisition_duration_ts.tv_sec << "." << acquisition_duration_ts.tv_nsec/1000000 << "sec\n";
+	  cerr << "acquisition::acquisition_thread_function, inter acquisition delay " << inter_acquisition_timespec.tv_sec *1000+inter_acquisition_timespec.tv_nsec/1000000 << "ms\n";
+#endif
 	  // Read waveform data from USB interface board.
 	  move_to_dataBuffer();
 	  // play with led to impress visitors
 	  advanceLED();
 	  // check if we are fast enough to prevent buffer overflow in opal kelly board
 	  checkFifoOK();
+	  time_last_sample_acquired_timespec=now_ts;
 	  
 	}
       // take a break here instead of looping 100% of PCU
