@@ -8,7 +8,7 @@ the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 
-ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies.  The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Fredora 19 or later vesions.
+ktan is a C++ program to perform data acquisition with the GNU/Linux operating system. This program was developed to work with the Evaluation board from Intan Technologies.  The visual interface of kacq was written using the gtk (gtkmm) library. We have run and tested ktan on Fredora 19 and on Ubuntu.
 
 Here are some of ktan's features:
 

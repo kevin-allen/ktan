@@ -25,6 +25,19 @@ Ubuntu: `sudo apt-get install libgtkmm-3.0`
 
 Go into the source directory and run: `./autogen.sh;./configure; make; su -; make install`
 
+# Note on installation with Fedora >=25
+
+With these Fedora versions, the oscilloscope does not work out of the box. This appears to be because Fedora switched from Xorg to Wayland. To fix the issue, you can try the following in a terminal:
+
+`sudo nano /etc/gdm/custom.conf`
+
+Then remove the hash in this line
+ 
+`WaylandEnable=false`
+
+Restart the computer and Fedora will use Xorg instead of Wayland. The oscilloscope should now work.
+
+
 # More information
 
 Documentation is available as a [wiki page](https://github.com/kevin-allen/ktan/wiki)
