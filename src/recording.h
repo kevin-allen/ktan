@@ -52,6 +52,7 @@ class recording
   string date_string;
   string directory_name; // 
   string file_name;
+  string file_name_vhdr; // vhdr header filename
   off_t file_size; // to check if the file size makes sense
   off_t predicted_file_size; // to check the size of file at the end
   int number_channels_save; // number of channels that will be saved
@@ -77,6 +78,7 @@ class recording
   bool close_file();
   void set_date_string();
   void generate_file_name();
+  bool generate_vhdr_file();
   double max_recording_time_min;
   bool next_recording_file();
 

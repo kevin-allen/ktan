@@ -115,14 +115,19 @@ void recording::set_date_string()
 void recording::generate_file_name()
 {
   std::stringstream ss;
+  std::stringstream sv;
   
   set_date_string();
   if(file_index<10)
-    ss << directory_name << file_base << "-" << date_string << "_0" << file_index << ".dat";
+    ss << directory_name << file_base << "-" << date_string << "_0" << file_index;
   else
-    ss << directory_name << file_base << "-" << date_string << "_" << file_index << ".dat";
+    ss << directory_name << file_base << "-" << date_string << "_" << file_index;
 
+  sv << ss.rdbuf() << ".vhdr";
+  ss << ".dat";
+ 
   file_name=ss.str();
+  file_name_vhdr=sv.str();
 }
 
 
@@ -423,12 +428,52 @@ int recording::save_buffer_to_file()
   
   return 0;
 }
+
+bool recording::generate_vhdr_file() {
+  FILE *fid = fopen(file_name_vhdr.c_str(),"w");
+  if (fid==NULL) {
+    cerr << "recording::generate_vhdr_file() error opening " << file_name_vhdr << '\n';
+    return -1;
+  }
+  
+  fprintf(fid, "Brain Vision Data Exchange Header File Version 1.0\r\n" \
+	  "; Data created by ktan\r\n\r\n"				\
+	  "[Common Infos]\r\n"						\
+	  "Codepage=UTF-8\r\n"						\
+	  "DataFile=%s\r\n"						\
+	  "# MarkerFile=cm_09_ass.vmrk\r\n"				\
+	  "DataFormat=BINARY\r\n"					\
+	  "; Data orientation: MULTIPLEXED=ch1,pt1, ch2,pt1 ...\r\n"	\
+	  "DataOrientation=MULTIPLEXED\r\n"				\
+	  "NumberOfChannels=%d\r\n"					\
+	  "; Sampling interval in microseconds\r\n"			\
+	  "SamplingInterval=%g\r\n\r\n"					\
+	  "[Binary Infos]\r\n"						\
+	  "BinaryFormat=INT_16\r\n\r\n"					\
+	  "[Channel Infos]\r\n"						\
+	  "; Each entry: Ch<Channel number>=<Name>,<Reference channel name>,\r\n" \
+	  "; <Resolution in \"Unit\">,<Unit>, Future extensions..\r\n"	\
+	  "; Fields are delimited by commas, some fields might be omitted (empty).\r\n" \
+	  "; Commas in channel names are coded as \"\1\".\r\n",		\
+	  file_name.c_str()+strlen(directory_name.c_str()),number_channels_save, 1e6/20000.0);
+
+  for (int k=0; k<number_channels_save; k++)
+	fprintf(fid,"CH%d=%d,,1,?\r\n",k+1,k);
+
+  if (fid != NULL) fclose(fid);
+}
+
+
+
+
+
+
 bool recording::open_file()
 {
 #ifdef DEBUG_REC
   cerr << "entering recording::open_file(), file_name: " << file_name << "\n";
 #endif
-
+  generate_vhdr_file();
   file=fopen(file_name.c_str(),"w");
   if (file==NULL)
     {
