@@ -69,7 +69,7 @@ void channelGroup::set_channel_id(int index, int id)
     }
   if(index>max_num_channels)
     {
-      cerr << "channelGroup::set_channel_id(), index > max_num_channles: " << index << '\n';
+      cerr << "channelGroup::set_channel_id(), index > max_num_channles: " << index << ">" << max_num_channels << '\n';
       return;
     }
   channel_list[index]=id;

@@ -2,8 +2,8 @@
 #define RECORDING_H
 
 #define RECORDING_MAXIMUM_CHANNELS 256+16 // this is x 64 channels plus digital inputs
-#define MAX_REC_BUFFER_LENGTH 200000 // recording_buffer 
-#define FILLING_PROPORTION_BEFORE_SAVE .30
+#define MAX_REC_BUFFER_LENGTH 20000*128*2 // recording_buffer 
+#define FILLING_PROPORTION_BEFORE_SAVE .20
 
 
 #include <string>

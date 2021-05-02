@@ -1,6 +1,6 @@
 #ifndef DATABUFFER_H
 #define DATABUFFER_H
-#define MAX_BUFFER_LENGTH 2000000 // data_buffer 
+#define MAX_BUFFER_LENGTH 20000*128*3 // data_buffer 
 #include <string>
 #include <queue>
 #include "timeKeeper.h"

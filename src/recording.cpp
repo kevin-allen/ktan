@@ -351,7 +351,13 @@ void *recording::recording_thread_function(void)
 	}
       new_samples_in_buffer=new_samples_in_buffer+ret_get_samples; // add the new samples loaded
 
-      // check if we have enough data to justify saving them to 
+      // check if we have enough data to justify saving them to
+
+#ifdef DEBUG_REC
+      cerr << "recording::recording_thread_function: new_samples_in_buffer: " << new_samples_in_buffer << ", proportion: " << (double)new_samples_in_buffer/(double)max_samples_in_buffer << "\n";
+#endif
+
+      
       if(new_samples_in_buffer>max_samples_in_buffer*proportion_buffer_filled_before_save)
 	{
 	  if(save_buffer_to_file()!=0)	  // save buffer to file

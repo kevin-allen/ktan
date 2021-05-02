@@ -1,6 +1,6 @@
 #ifndef CHANNELGROUP_H
 #define CHANNELGROUP_H
-#define MAX_CHANNELS_PER_GROUP 16
+#define MAX_CHANNELS_PER_GROUP 32
 #include <string>
 #include "timeKeeper.h"
 #include "dataBuffer.h"
