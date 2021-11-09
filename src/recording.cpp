@@ -1,6 +1,6 @@
 //#define DEBUG_REC
 #include "recording.h"
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdint.h>
 #include <iostream>
 #include <pwd.h>
@@ -18,10 +18,10 @@ recording::recording(dataBuffer* datab)
 #endif
 
   db=datab;
-  // Allocate memory for an internal buffer that can be used by other objects 
+  // Allocate memory for an internal buffer that can be used by other objects
   buffer_size= MAX_REC_BUFFER_LENGTH;
   buffer = new short int [buffer_size];
-  
+
   // set the home directory as the default directory
   struct passwd *p;
   char *username=getenv("USER");
@@ -29,9 +29,9 @@ recording::recording(dataBuffer* datab)
   directory_name=strcat(p->pw_dir,"/");
   set_file_base();
   file_index=1;
-  
+
   proportion_buffer_filled_before_save=FILLING_PROPORTION_BEFORE_SAVE;
-    
+
   number_channels_save=db->getNumChannels();
   max_samples_in_buffer=buffer_size/number_channels_save;
   new_samples_in_buffer=0;
@@ -77,10 +77,10 @@ void recording::set_file_base()
   p=getpwnam(username);
   strcpy(hd, p->pw_dir);
   strcat(hd,"/");
-  
+
   char* base_file_name=(char*)"ktan.file.base";
   base_file_name=strcat(hd,base_file_name);
-  
+
   ifstream file(base_file_name);
   if(file.is_open()==TRUE)
     {
@@ -116,7 +116,7 @@ void recording::generate_file_name()
 {
   std::stringstream ss;
   std::stringstream sv;
-  
+
   set_date_string();
   if(file_index<10)
     ss << directory_name << file_base << "-" << date_string << "_0" << file_index;
@@ -125,7 +125,7 @@ void recording::generate_file_name()
 
   sv << ss.rdbuf() << ".vhdr";
   ss << ".dat";
- 
+
   file_name=ss.str();
   file_name_vhdr=sv.str();
 }
@@ -149,16 +149,21 @@ bool recording::set_recording_channels(int numChannels, unsigned int* channelLis
   number_channels_save=numChannels;
   for(int i = 0; i < number_channels_save;i++)
     channel_list[i]=channelList[i];
+
 #ifdef DEBUG_REC
   cerr << "leaving recording::set_recording_channels()\n";
 #endif
+
+  return true;
 }
+
+
 bool recording::start_recording()
 {
 #ifdef DEBUG_REC
   cerr << "entering recording::start_recording()\n";
 #endif
-  
+
   if(is_recording==true)
     {
       cerr << "recording::start_recording(), is_recording already true\n";
@@ -169,8 +174,8 @@ bool recording::start_recording()
   number_samples_saved_current_file=0;
   generate_file_name();
   is_recording=true;
-  
-  
+
+
   // check for disk space here
   struct statvfs info;
   if(statvfs (directory_name.c_str(), &info)==-1)
@@ -207,7 +212,7 @@ bool recording::start_recording()
   cout << "info.f_bsize*info.f_blocks:" << info.f_bsize*info.f_blocks/1024 << '\n';
   cout << "info.f_bsize*info.f_bavail:" << info.f_bsize*info.f_bavail/1024 << '\n';
 #endif
-  
+
   if((info.f_bsize*info.f_bavail/1024)< 20000000 ) // 20 Gb free space minimum
     {
       cerr << "recording::start_recording(), not enough free disk space\n";
@@ -264,7 +269,7 @@ bool recording::get_is_recording()
 
 void recording::set_file_base(string fb)
 {
-  
+
   // remove empty space from file_base
   std::string::iterator end_pos = std::remove(fb.begin(), fb.end(), ' ');
   fb.erase(end_pos, fb.end());
@@ -362,7 +367,7 @@ void *recording::recording_thread_function(void)
       cerr << "recording::recording_thread_function: new_samples_in_buffer: " << new_samples_in_buffer << ", proportion: " << (double)new_samples_in_buffer/(double)max_samples_in_buffer << "\n";
 #endif
 
-      
+
       if(new_samples_in_buffer>max_samples_in_buffer*proportion_buffer_filled_before_save)
 	{
 	  if(save_buffer_to_file()!=0)	  // save buffer to file
@@ -382,18 +387,18 @@ void *recording::recording_thread_function(void)
 	    {
 	      next_recording_file();
 	    }
-	  
+
 	}
-    
+
       pthread_mutex_unlock(&rec_mutex);
 #ifdef DEBUG_REC
       cerr << "recording::recording_thread_function unlock mutex()\n";
 #endif
-      
+
       // take a break here instead of looping 100% of PCU
       nanosleep(&inter_recording_sleep_timespec,&req);
     }
-  
+
 #ifdef DEBUG_REC
   cerr << "leaving recording::recording_thread_function()\n";
 #endif
@@ -431,7 +436,7 @@ int recording::save_buffer_to_file()
 #ifdef DEBUG_REC
   cerr << "leaving recording::save_buffer_to_file()\n";
 #endif
-  
+
   return 0;
 }
 
@@ -441,7 +446,7 @@ bool recording::generate_vhdr_file() {
     cerr << "recording::generate_vhdr_file() error opening " << file_name_vhdr << '\n';
     return -1;
   }
-  
+
   fprintf(fid, "Brain Vision Data Exchange Header File Version 1.0\r\n" \
 	  "; Data created by ktan\r\n\r\n"				\
 	  "[Common Infos]\r\n"						\
@@ -503,7 +508,7 @@ bool recording::close_file()
 #ifdef DEBUG_REC
   cerr << "leaving recording::close_file()\n";
 #endif
-  
+
   return true;
 
 }
