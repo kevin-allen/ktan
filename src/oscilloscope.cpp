@@ -1,6 +1,6 @@
 //#define DEBUG_OSC
 #include "oscilloscope.h"
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdint.h>
 #include <iostream>
 #include <pwd.h>
@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <gtkmm.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdint.h>
 #include <glibmm.h>
 #include <fstream>
@@ -22,11 +22,11 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
 
   db=datab;
   drawing_area=da;
-  // Allocate memory for an internal buffer that can be used by other objects 
+  // Allocate memory for an internal buffer that can be used by other objects
   buffer_size= OSC_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS; // to rewind
   buffer = new double [buffer_size];
   buffer_si = new short int[buffer_size];
-  
+
   show_buffer_size =  OSC_SHOW_BUFFER_LENGTH_SAMPLES*OSC_MAXIMUM_CHANNELS;
   show_buffer = new double [show_buffer_size];
 
@@ -38,7 +38,7 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   is_drawing=false;
   is_displaying=false;
   draw_only_mean=false;
-  
+
   num_channels=db->getNumChannels();
 
   #ifdef DEBUG_OSC
@@ -79,33 +79,33 @@ oscilloscope::oscilloscope(dataBuffer* datab,Gtk::DrawingArea* da)
   y_min_for_pixel_x = new double[OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA];
   y_max_for_pixel_x = new double[OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA];
   mean_for_pixel_x = new double[OSCILLOSCOPE_MAXIMUM_X_PIXEL_FOR_DRAWING_AREA];
-  
+
   max_samples_buffer=buffer_size/num_channels;
   new_samples_buffer=0;
   num_samples_displayed=0;
   current_group=0;
-  
+
   global_gain=OSCILLOSCOPE_DEFAULT_GAIN;
   gui_global_gain=global_gain;
   min_global_gain=OSCILLOSCOPE_MIN_GLOBAL_GAIN;
   max_global_gain=OSCILLOSCOPE_MAX_GLOBAL_GAIN;
   global_gain_factor=OSCILLOSCOPE_GLOBAL_GAIN_CHANGE_FACTOR;
-  
+
   // for timer
   tslot = sigc::mem_fun(*this, &oscilloscope::on_timeout);
-  
+
   factor_microvolt=OSC_FACTOR_MICROVOLT;
 
   pthread_mutex_init(&osc_mutex,NULL);
-  
+
 #ifdef DEBUG_OSC
-  cerr << "oscilloscope::oscilloscope(), " 
-       << "sampling_rate: " << sampling_rate 
-       << " num_channels: " << num_channels 
-       << " seconds_per_page: " << seconds_per_page 
+  cerr << "oscilloscope::oscilloscope(), "
+       << "sampling_rate: " << sampling_rate
+       << " num_channels: " << num_channels
+       << " seconds_per_page: " << seconds_per_page
        << " samples_per_page: " << samples_per_page
        << " page size: " << page_size
-       << " buffer size: " << buffer_size 
+       << " buffer size: " << buffer_size
        << " num_pages_buffer: " << num_pages_buffer << '\n';
   cerr << "leaving oscilloscope::oscilloscope()\n\n";
 
@@ -117,7 +117,7 @@ oscilloscope::~oscilloscope()
 #ifdef DEBUG_OSC
   cerr << "***entering oscilloscope::~oscilloscope()***\n";
 #endif
-  
+
 
   stop_oscilloscope();
   pthread_mutex_destroy(&osc_mutex);
@@ -143,7 +143,7 @@ bool oscilloscope::on_timeout()
   cerr << "***entering oscilloscope::on_timeout()***\n";
 #endif
   if(is_displaying==false)
-    { 
+    {
       return false;
     }
   if(is_drawing==true)
@@ -156,32 +156,32 @@ bool oscilloscope::on_timeout()
   // mutex lock, I think mutex might be safer than the is_drawing variable flag
   pthread_mutex_lock(&osc_mutex);
 
-  
+
   // gui can affect time and gain only when this function is called
   // prevent gui changes from affecting drawing until it is completed
   update_time_gain();
 
-  // get a copy of the display group so that any change during 
+  // get a copy of the display group so that any change during
   // the displaying process does not cause segmentation faults
   // so for displaying use grp_for_display
   grp[current_group].copy_channelGroup(grp_for_display);
-  
+
   // transfer data from db to buffer
   if(get_data()<0)
     {
       cerr << "oscilloscope::on_timeout(), problem getting new data\n";
       reset();
     }
-  
+
   // display the new data if we have a complete page to show
   show_new_data();
 
   // mutex unlock
-  pthread_mutex_unlock(&osc_mutex);  
+  pthread_mutex_unlock(&osc_mutex);
 
-  
+
   is_drawing==false;
-  
+
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::on_timeout()\n\n";
 #endif
@@ -219,7 +219,7 @@ void oscilloscope::increase_gain()
     }
 #ifdef DEBUG_OSC
   cerr << "oscilloscope::increase_gain(), gui_global_gain: " << gui_global_gain << '\n';
-#endif 
+#endif
 }
 void oscilloscope::decrease_gain()
 {
@@ -268,9 +268,9 @@ void oscilloscope::refresh()
 #ifdef DEBUG_OSC
   cerr << "***entering oscilloscope::refresh()***\n";
 #endif
-  
+
   grp[current_group].copy_channelGroup(grp_for_display);
-  show_data(displayed_page); 
+  show_data(displayed_page);
 
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::refresh()\n\n";
@@ -281,7 +281,7 @@ int oscilloscope::fill_show_buffer(int page)
 {
   // in the show buffer all the data
   // from one channel are next to each
-  // other 
+  // other
 
 #ifdef DEBUG_OSC
   cerr << "***entering oscilloscope::fill_show_buffer()***\n";
@@ -292,11 +292,13 @@ int oscilloscope::fill_show_buffer(int page)
     for(int j =0; j < samples_per_page; j++)
       show_buffer[(samples_per_page*i)+j]=
 	page_ptr[(num_channels*j)+grp_for_display.get_channel_id(i)]*global_gain;
-    
+
 
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::fill_show_buffer()\n\n";
 #endif
+
+  return 0;
 
 }
 
@@ -306,7 +308,7 @@ int oscilloscope::show_data(int page)
   cerr << "***entering oscilloscope::show_data()***\n";
 #endif
 // to get an idea of drawing time
-  struct timespec beginning_drawing,end_drawing,drawing_duration,data_crunch_end,data_crunch_duration,  rec; 
+  struct timespec beginning_drawing,end_drawing,drawing_duration,data_crunch_end,data_crunch_duration,  rec;
   int i,j,k;
   // do all the drawing here
   Cairo::RefPtr<Cairo::Context> cr;
@@ -333,7 +335,7 @@ int oscilloscope::show_data(int page)
     }
 
   fill_show_buffer(page);
-  
+
   allocation = drawing_area->get_allocation();
   cr = drawing_area->get_window()->create_cairo_context();
   width_start = allocation.get_width();
@@ -376,7 +378,7 @@ int oscilloscope::show_data(int page)
 	  buffer_cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
 			     green[grp_for_display.get_channel_id(i)],
 			     blue[grp_for_display.get_channel_id(i)]);
-	  
+
 	  // get the minimum y and maximum y and mean y for each x coordinate on the screen
 	  for (j=0;j<x_pixels_to_draw;j++)
 	    {
@@ -402,7 +404,7 @@ int oscilloscope::show_data(int page)
 	  /*to draw the mean */
 	  for (j=1;j<x_pixels_to_draw;j++)
 	    {
-	      if (j==0) 
+	      if (j==0)
 	      	{
 
 		  buffer_cr->move_to(x_margin_left+j*pixels_per_data_point_to_draw,
@@ -430,18 +432,18 @@ int oscilloscope::show_data(int page)
     }
   else // less than a data point per pixel in the screen
     {
-      
+
       for (i=0;i<grp_for_display.get_num_channels();i++)
 	{
-	
+
 	  buffer_cr->set_source_rgb(red[grp_for_display.get_channel_id(i)],
 	  		     green[grp_for_display.get_channel_id(i)],
 			     blue[grp_for_display.get_channel_id(i)]);
-	  
+
 	  // get the minimum y and maximum y and mean y for each x coordinate on the screen
 	  for (j=0;j<samples_per_page;j++)
 	    {
-	      if (j==0) 
+	      if (j==0)
 	      	{
 		  buffer_cr->move_to(x_margin_left+j*pixels_per_data_point,
 			      (int)((vertical_channel_space*i+vertical_channel_space/2+y_margin_top)+show_buffer[(samples_per_page*i)+j]));
@@ -455,11 +457,11 @@ int oscilloscope::show_data(int page)
 	  buffer_cr->stroke();
 	}
     }
-  
+
 
   draw_grid(buffer_cr);
 
-  cr->set_source(buffer_surface,0,0);  
+  cr->set_source(buffer_surface,0,0);
   cr->paint();
 
 
@@ -467,7 +469,7 @@ int oscilloscope::show_data(int page)
   clock_gettime(CLOCK_REALTIME, &end_drawing);
   drawing_duration=tk.diff(&beginning_drawing,&end_drawing);
   displayed_page=page;
-  
+
 #ifdef DEBUG_OSC
   cerr << "oscilloscope::show_data(), drawing time : " << drawing_duration.tv_sec*1000+drawing_duration.tv_nsec/1000000.0 << "ms\n";
   cerr << "leaving oscilloscope::show_data()\n\n";
@@ -487,8 +489,8 @@ int oscilloscope::show_new_data()
     {
       return 0;
     }
-  
-  
+
+
   // show the current page
   show_data(current_page);
 
@@ -502,14 +504,14 @@ int oscilloscope::show_new_data()
     current_page=0;
   if(pages_in_memory<num_pages_buffer-1)
     pages_in_memory++;
-  
+
 
 #ifdef DEBUG_OSC
   cerr << "oscilloscope::show_new_data(), current_page: " << current_page << "\n";
   cerr << "oscilloscope::show_new_data(), num_samples_displayed: " << num_samples_displayed << '\n';
 #endif
 
-  
+
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::show_new_data()\n\n";
 #endif
@@ -540,17 +542,17 @@ int oscilloscope::get_data()
   unsigned long int first_sample = num_samples_displayed+new_samples_buffer;
 
 #ifdef DEBUG_OSC
-  cerr << "oscilloscope::get_data(), " 
+  cerr << "oscilloscope::get_data(), "
        << " num_samples_displayed: " << num_samples_displayed
-       << " db->get_number_samples_read(): " << db->get_number_samples_read() 
-       << " new_samples_buffer: " << new_samples_buffer 
-       << " new samples available: " << new_samples_available 
+       << " db->get_number_samples_read(): " << db->get_number_samples_read()
+       << " new_samples_buffer: " << new_samples_buffer
+       << " new samples available: " << new_samples_available
        << " samples_to_complete_page: " << samples_to_complete_page
        << " first_sample: " << first_sample << '\n';
 #endif
 
 
-  // 3. read the new data, maximum up to complete the current page, all channels, get the data in short integer 
+  // 3. read the new data, maximum up to complete the current page, all channels, get the data in short integer
   buffer_ptr=buffer+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
   buffer_si_ptr=buffer_si+(current_page*samples_per_page*num_channels)+(new_samples_buffer*num_channels);
   int samples_returned=db->getNewData(first_sample,buffer_si_ptr,samples_to_complete_page,num_channels,all_channels_list);
@@ -621,7 +623,7 @@ bool oscilloscope::start_oscilloscope()
 #endif
   reset();
   is_displaying=true;
-  timeout_connection = Glib::signal_timeout().connect(tslot,OSC_TIME_BETWEEN_UPDATE_MS); 
+  timeout_connection = Glib::signal_timeout().connect(tslot,OSC_TIME_BETWEEN_UPDATE_MS);
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::start_oscilloscope()\n\n";
 #endif
@@ -632,7 +634,7 @@ bool oscilloscope::stop_oscilloscope()
 #ifdef DEBUG_OSC
   cerr << "***entering oscilloscope::stop_oscilloscope()***\n";
 #endif
-  
+
   timeout_connection.disconnect();
   is_displaying=false;
   usleep(50000); // allow thread to die
@@ -665,7 +667,7 @@ void oscilloscope::set_channel_group_default()
   int group_list[size];
   int n = 0;
   int nn;
-  
+
   //cout << "check if " << conf_file_name << " is present in " << home_directory << "\n";
   ifstream file(conf_file_name);
   if(file.is_open()==TRUE)
@@ -687,7 +689,7 @@ void oscilloscope::set_channel_group_default()
 	      set_channel_group_default_no_file();
 	      return;
 	    }
-	  if(channel_list[i]>=num_channels|| channel_list[i]<0) 
+	  if(channel_list[i]>=num_channels|| channel_list[i]<0)
 	    {
 	      cerr << "oscilloscope::set_channel_group_default(), invalid channel number:" << channel_list[i] << " in " << conf_file_name << '\n';
 	      cerr << "should be from 0 to " << num_channels-1 << '\n';
@@ -717,7 +719,7 @@ void oscilloscope::set_channel_group_default()
 	}
     }
   else
-    {  
+    {
       set_channel_group_default_no_file();
     }
 #ifdef DEBUG_OSC
@@ -841,7 +843,7 @@ bool oscilloscope::get_is_displaying()
       return;
     }
   current_group=g;
-  
+
   refresh();
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::set_current_group()\n\n";
@@ -865,17 +867,17 @@ channelGroup* oscilloscope::get_one_channel_group(int g)
 }
 void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
 {
-  
+
   int width, height,i;
   double vertical_channel_space,horizontal_channel_space;
   int writing_y=30;
   Gtk::Allocation allocation;
   // get the size of the drawing area
-  
+
   allocation = drawing_area->get_allocation();
   width = allocation.get_width();
   height = allocation.get_height();
-  
+
   // get the vertical space allocated for each channel in the current group
   vertical_channel_space=(height - y_margin_top - y_margin_bottom)/grp_for_display.get_num_channels();
   horizontal_channel_space=width-x_margin_left-x_margin_right;
@@ -892,8 +894,8 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
 		  (i*vertical_channel_space)+(vertical_channel_space/2) + y_margin_top);
       cr->show_text (g_strdup_printf("%d",grp_for_display.get_channel_id(i)));
     }
-	
-        
+
+
   // // write the range in V for the channels
   // // code is ugly because need access to comedi interface to know the range
   // // now just give one number for all channels because user not allowed to change it for each channel individually
@@ -901,8 +903,8 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
   // double visual_range_one_channel=(double)range_v/65535.00*vertical_channel_space/osc->global_gain/osc->gain[osc->current_group][0];// should be in V
   // cairo_move_to(cr, 5,writing_y);
   // cairo_show_text (cr, g_strdup_printf("%.2fV",visual_range_one_channel));
-  
-  // //  printf("global_gain: %f, gui_global_gain: %f, gain: %f, visual_range_one_channel: %f, vertical_channel_space: %d \n",osc->global_gain, osc->gui_global_gain, osc->gain[osc->current_group][0],visual_range_one_channel,vertical_channel_space); 
+
+  // //  printf("global_gain: %f, gui_global_gain: %f, gain: %f, visual_range_one_channel: %f, vertical_channel_space: %d \n",osc->global_gain, osc->gui_global_gain, osc->gain[osc->current_group][0],visual_range_one_channel,vertical_channel_space);
 
   // // for each channel individually it would be something like this
   // /* for (i=0;i<osc->number_channels_per_group[osc->current_group];i++) */
@@ -921,9 +923,9 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
   // write the global gain
   cr->move_to(x_margin_left+(horizontal_channel_space/10*5),writing_y);
   cr->show_text (g_strdup_printf("gain: %.4lf",global_gain));
-  
 
-     
+
+
   // draw an horizontal tic between each channel at the right and left of the oscilloscope
   cr->set_source_rgb(0.5, 0.5, 0.5);
   cr->set_line_width(2);
@@ -937,7 +939,7 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
        cr->rel_line_to(10, 0);
    }
   cr->stroke();
-      
+
   // draw 9 vertical tics that will separate the oscilloscope region in 10 equal parts, at top and bottom
   for (i=0; i < 11; i++)
     {
@@ -946,7 +948,7 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
       cr->move_to(x_margin_left+(i*horizontal_channel_space/10), height);
       cr->rel_line_to(0, -10);
     }
-  
+
   cr->stroke();
   cr->set_line_width(1.0);
 
@@ -959,7 +961,7 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
   int page;
   // by default, show the page currently on displayed
   page=displayed_page;
-  
+
   if(displayed_page<current_page)
     {
       if(displayed_page>0&&current_page-displayed_page<pages_in_memory )
@@ -973,14 +975,14 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
 	      page=num_pages_buffer-1;
 	    }
 	}
-    }                                                     
+    }
   if(displayed_page-1>current_page && current_page+(num_pages_buffer-displayed_page)<pages_in_memory)
     {
       page=displayed_page-1;
     }
 
   show_data(page);
-  
+
 
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::show_previous_page()\n\n";
@@ -1006,7 +1008,7 @@ void oscilloscope::draw_grid(Cairo::RefPtr<Cairo::Context> cr)
     }
 
   show_data(page);
-  
+
 #ifdef DEBUG_OSC
   cerr << "leaving oscilloscope::show_next_page()\n\n";
 #endif
