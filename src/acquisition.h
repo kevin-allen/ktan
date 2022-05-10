@@ -35,6 +35,7 @@ class acquisition
   static void *acquisition_thread_helper(void *context) // helper function to start the new thread
   {
     ((acquisition *)context)->acquisition_thread_function();
+    return 0;
   }
   void printLocalBuffer();
   void set_check_positrack(bool val);

@@ -1224,7 +1224,7 @@ void *acquisition::acquisition_thread_function(void)
 #ifdef DEBUG_ACQ
   cerr << "leaving acquisition::acquisition_thread_function()\n";
 #endif
-
+return 0;
 }
 
 

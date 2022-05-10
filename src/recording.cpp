@@ -257,6 +257,7 @@ bool recording::stop_recording()
       cerr << "recording::stop_recording(), problem closing the file\n";
     }
   file_index++;
+  return true;
 #ifdef DEBUG_REC
   cerr << "leaving recording::stop_recording()\n";
 #endif
@@ -327,6 +328,7 @@ bool recording::next_recording_file()
   clock_gettime(CLOCK_REALTIME, &start_recording_time_timespec);
   number_samples_saved_current_file=0;
   cout << "data saved to" << file_name << '\n';
+  return true;
 #ifdef DEBUG_REC
   cerr << "recording::next_recording_file(), start_recording_time_timespec: " << start_recording_time_timespec.tv_sec << '\n';
   cerr << "leaving recording::next_recording_file()\n";
@@ -402,6 +404,7 @@ void *recording::recording_thread_function(void)
 #ifdef DEBUG_REC
   cerr << "leaving recording::recording_thread_function()\n";
 #endif
+return 0;
 }
 
 
@@ -472,6 +475,7 @@ bool recording::generate_vhdr_file() {
 	fprintf(fid,"CH%d=%d,,1,?\r\n",k+1,k);
 
   if (fid != NULL) fclose(fid);
+  return 0;
 }
 
 
