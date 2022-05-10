@@ -41,6 +41,7 @@ class recording
   static void *recording_thread_helper(void *context) // helper function to start the new thread
   {
     ((recording *)context)->recording_thread_function();
+    return 0;
   }
     
  private:
