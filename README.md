@@ -4,7 +4,7 @@ ktan is a C++ program to perform data acquisition with the GNU/Linux operating s
 
 # Features
 
-* Record up to at least 64 channels (depending on hardware).
+* Record up to 128 channels (depending on hardware).
 * Rewind the oscilloscope to re-examined recently acquired signals.
 * Independent threads for acquisition, recording and oscilloscope to take advantage of multi-core processors.
 * Control recording and visualize data from a remote computer via ssh (-X).
